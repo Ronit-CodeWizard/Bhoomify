@@ -35,8 +35,22 @@ export function ProfileScreen({
     { key: 'P', desc: 'Go back to previous' },
   ];
 
+  const formatTimeStreamed = (seconds: number) => {
+    if (seconds < 60) return `${seconds}s`;
+    const minutes = Math.floor(seconds / 60);
+    if (seconds < 3600) {
+      const remainingSecs = seconds % 60;
+      return `${minutes}m ${remainingSecs}s`;
+    }
+    const hours = seconds / 3600;
+    if (hours < 10) {
+      return `${hours.toFixed(1)} hrs`;
+    }
+    return `${Math.floor(hours)} hrs`;
+  };
+
   const stats = [
-    { label: 'Time Streamed', value: (timeStreamedSec / 3600).toFixed(4) + ' hrs', icon: Clock, color: 'text-purple-400' },
+    { label: 'Time Streamed', value: formatTimeStreamed(timeStreamedSec), icon: Clock, color: 'text-purple-400' },
     { label: 'Saved Tracks', value: likedTrackIds.length.toString(), icon: Heart, color: 'text-pink-400' },
     { label: 'Total Plays', value: totalPlays.toLocaleString(), icon: Music, color: 'text-cyan-400' },
   ];
@@ -47,7 +61,7 @@ export function ProfileScreen({
     setTimeout(() => setCopiedKey(null), 1000);
   };
 
-  const userDisplayName = 'Ronit CodeWizard';
+  const userDisplayName = 'Rohan';
   const userPhotoUrl = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=200&auto=format&fit=crop';
 
   return (

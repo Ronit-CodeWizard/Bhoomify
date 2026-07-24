@@ -14,14 +14,23 @@ import { Sparkles, Compass, Flame, Leaf, VolumeX, Keyboard } from 'lucide-react'
 export default function App() {
   const [isUnlocked, setIsUnlocked] = useState<boolean>(() => {
     const saved = sessionStorage.getItem('aura_unlocked');
-    return saved === 'true';
+    const savedTime = sessionStorage.getItem('aura_unlocked_time');
+    if (saved === 'true' && savedTime) {
+      const elapsed = Date.now() - parseInt(savedTime, 10);
+      if (elapsed < 10 * 60 * 1000) {
+        return true;
+      }
+    }
+    sessionStorage.removeItem('aura_unlocked');
+    sessionStorage.removeItem('aura_unlocked_time');
+    return false;
   });
 
-  useEffect(() => {
-    if (isUnlocked) {
-      sessionStorage.setItem('aura_unlocked', 'true');
-    }
-  }, [isUnlocked]);
+  const handleUnlock = () => {
+    sessionStorage.setItem('aura_unlocked', 'true');
+    sessionStorage.setItem('aura_unlocked_time', Date.now().toString());
+    setIsUnlocked(true);
+  };
 
   const player = useAudioPlayer();
   const {
@@ -126,7 +135,7 @@ export default function App() {
                 Discovery Hub
               </span>
               <h2 className="text-2xl font-bold font-display tracking-tight mt-2.5">
-                Hello, Ronit
+                Hello, Rohan
               </h2>
               <p className="text-xs text-white/40 mt-1">Ready for some modern premium sounds?</p>
             </div>
@@ -252,8 +261,32 @@ export default function App() {
     }
   };
 
+  useEffect(() => {
+    if (!isUnlocked) return;
+
+    const interval = setInterval(() => {
+      const savedTime = sessionStorage.getItem('aura_unlocked_time');
+      if (savedTime) {
+        const elapsed = Date.now() - parseInt(savedTime, 10);
+        if (elapsed >= 10 * 60 * 1000) {
+          // Pause music before locking
+          if (isPlaying) {
+            togglePlay();
+          }
+          setIsUnlocked(false);
+          sessionStorage.removeItem('aura_unlocked');
+          sessionStorage.removeItem('aura_unlocked_time');
+        }
+      } else {
+        setIsUnlocked(false);
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [isUnlocked, isPlaying, togglePlay]);
+
   if (!isUnlocked) {
-    return <PasswordGate onUnlock={() => setIsUnlocked(true)} />;
+    return <PasswordGate onUnlock={handleUnlock} />;
   }
 
   return (

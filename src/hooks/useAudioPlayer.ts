@@ -8,26 +8,24 @@ export function useAudioPlayer() {
     if (saved) {
       try {
         const parsed: Track[] = JSON.parse(saved);
-        const initialIdsSet = new Set(initialTracks.map((t) => t.id));
-        const matches = parsed.length === initialTracks.length && parsed.every((t) => initialIdsSet.has(t.id));
-        if (matches) {
+        if (Array.isArray(parsed) && parsed.length > 0) {
           return parsed;
         }
       } catch (e) {
         console.warn('Error parsing cached tracks:', e);
       }
     }
-    return initialTracks;
+    return [];
   });
 
   const [totalPlays, setTotalPlays] = useState<number>(() => {
     const saved = localStorage.getItem('aura_total_plays');
-    return saved ? parseInt(saved, 10) : 1482;
+    return saved ? parseInt(saved, 10) : 0;
   });
 
   const [timeStreamedSec, setTimeStreamedSec] = useState<number>(() => {
     const saved = localStorage.getItem('aura_time_streamed_sec');
-    return saved ? parseInt(saved, 10) : Math.floor(38.4 * 3600); // 138240 seconds
+    return saved ? parseInt(saved, 10) : 0;
   });
 
   useEffect(() => {
@@ -41,19 +39,29 @@ export function useAudioPlayer() {
   const [state, setState] = useState<PlayerState>(() => {
     const savedLiked = localStorage.getItem('aura_liked');
     const savedVolume = localStorage.getItem('aura_volume');
+    const savedShuffle = localStorage.getItem('aura_shuffle');
+    const savedRepeat = localStorage.getItem('aura_repeat');
     return {
       isPlaying: false,
       currentTime: 0,
       duration: 180, // Fallback duration
       volume: savedVolume ? parseFloat(savedVolume) : 0.8,
       isMuted: false,
-      isShuffle: false,
-      isRepeat: 'all',
+      isShuffle: savedShuffle === 'true',
+      isRepeat: (savedRepeat as 'none' | 'all' | 'one') || 'all',
       currentTrackIndex: 0,
       likedTrackIds: savedLiked ? JSON.parse(savedLiked) : [],
       queue: [],
     };
   });
+
+  useEffect(() => {
+    localStorage.setItem('aura_shuffle', state.isShuffle.toString());
+  }, [state.isShuffle]);
+
+  useEffect(() => {
+    localStorage.setItem('aura_repeat', state.isRepeat);
+  }, [state.isRepeat]);
 
   const [playError, setPlayError] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -63,6 +71,7 @@ export function useAudioPlayer() {
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const sourceRef = useRef<MediaElementAudioSourceNode | null>(null);
+  const handleTrackEndedRef = useRef<() => void>(() => {});
 
   // Initialize analyser node
   const initAnalyser = () => {
@@ -114,7 +123,7 @@ export function useAudioPlayer() {
     };
 
     const handleEnded = () => {
-      handleTrackEnded();
+      handleTrackEndedRef.current();
     };
 
     const handleError = () => {
@@ -149,9 +158,60 @@ export function useAudioPlayer() {
       try {
         const response = await fetch('/api/tracks');
         if (response.ok) {
-          const localTracks = await response.json();
+          const localTracks = await response.json() as Track[];
           if (localTracks && localTracks.length > 0) {
-            setTracks(localTracks);
+            // Restore from localStorage cached metadata if available
+            const savedStr = localStorage.getItem('aura_tracks');
+            let savedTracks: Track[] = [];
+            if (savedStr) {
+              try {
+                savedTracks = JSON.parse(savedStr);
+              } catch (e) {}
+            }
+
+            const mergedTracks = localTracks.map((track) => {
+              const saved = savedTracks.find((t) => t.id === track.id);
+              if (saved) {
+                return {
+                  ...track,
+                  duration: saved.duration || track.duration,
+                  durationSec: saved.durationSec || track.durationSec,
+                };
+              }
+              return track;
+            });
+
+            setTracks(mergedTracks);
+
+            // Preload metadata to resolve correct audio duration in the background
+            mergedTracks.forEach((track, idx) => {
+              if (track.audioUrl && (!track.durationSec || track.durationSec === 240)) {
+                const tempAudio = new Audio();
+                tempAudio.src = track.audioUrl;
+                tempAudio.preload = 'metadata';
+                tempAudio.addEventListener('loadedmetadata', () => {
+                  if (tempAudio.duration && !isNaN(tempAudio.duration)) {
+                    const durationSec = tempAudio.duration;
+                    const mins = Math.floor(durationSec / 60);
+                    const secs = Math.floor(durationSec % 60);
+                    const durationStr = `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+
+                    setTracks((prevTracks) => {
+                      const updated = [...prevTracks];
+                      const trackIdx = updated.findIndex((t) => t.id === track.id);
+                      if (trackIdx !== -1) {
+                        updated[trackIdx] = {
+                          ...updated[trackIdx],
+                          duration: durationStr,
+                          durationSec: Math.floor(durationSec),
+                        };
+                      }
+                      return updated;
+                    });
+                  }
+                });
+              }
+            });
           }
         }
       } catch (err) {
@@ -172,11 +232,15 @@ export function useAudioPlayer() {
     audio.load();
     
     // Reset timer
-    setState((prev) => ({ ...prev, currentTime: 0, duration: currentTrack.durationSec }));
+    setState((prev) => ({ 
+      ...prev, 
+      currentTime: 0, 
+      duration: currentTrack.durationSec || 240 
+    }));
 
     if (wasPlaying) {
       setTimeout(() => {
-        playAudio();
+        playAudio(true); // Pass true to register play counter for new song
       }, 50);
     }
   }, [state.currentTrackIndex]);
@@ -217,7 +281,7 @@ export function useAudioPlayer() {
         const nextTime = prev.currentTime + 1;
         if (nextTime >= prev.duration) {
           clearInterval(simulationTimerRef.current!);
-          setTimeout(() => handleTrackEnded(), 100);
+          setTimeout(() => handleTrackEndedRef.current(), 100);
           return { ...prev, currentTime: 0 };
         }
         return { ...prev, currentTime: nextTime };
@@ -232,7 +296,7 @@ export function useAudioPlayer() {
     }
   };
 
-  const playAudio = async () => {
+  const playAudio = async (isNewTrack = false) => {
     if (!audioRef.current) return;
     setPlayError(null);
     try {
@@ -244,12 +308,10 @@ export function useAudioPlayer() {
       }
 
       stopSimulation();
-      setState((prev) => {
-        if (!prev.isPlaying) {
-          setTotalPlays((p) => p + 1);
-        }
-        return { ...prev, isPlaying: true };
-      });
+      if (isNewTrack || !state.isPlaying) {
+        setTotalPlays((p) => p + 1);
+      }
+      setState((prev) => ({ ...prev, isPlaying: true }));
       await audioRef.current.play();
     } catch (err: any) {
       console.warn('Playback block or issue:', err);
@@ -257,12 +319,10 @@ export function useAudioPlayer() {
         setPlayError('Interaction required to play audio');
       }
       // Start simulated playback so the circular vinyl and seekbar still animate!
-      setState((prev) => {
-        if (!prev.isPlaying) {
-          setTotalPlays((p) => p + 1);
-        }
-        return { ...prev, isPlaying: true };
-      });
+      if (isNewTrack || !state.isPlaying) {
+        setTotalPlays((p) => p + 1);
+      }
+      setState((prev) => ({ ...prev, isPlaying: true }));
       startSimulation();
     }
   };
@@ -282,11 +342,32 @@ export function useAudioPlayer() {
     }
   };
 
-  const playTrack = (index: number) => {
+  const playTrack = (index: number, forcePlay = false) => {
     if (index < 0 || index >= tracks.length) return;
-    setTotalPlays((p) => p + 1);
-    setState((prev) => ({ ...prev, currentTrackIndex: index, isPlaying: true }));
-    // Source useEffect will trigger loading and playback
+    if (index === state.currentTrackIndex && !forcePlay) {
+      if (!state.isPlaying) {
+        playAudio();
+      } else {
+        pauseAudio();
+      }
+    } else {
+      setState((prev) => ({ ...prev, currentTrackIndex: index, isPlaying: true }));
+      if (index === state.currentTrackIndex && forcePlay) {
+        if (audioRef.current) {
+          audioRef.current.src = tracks[index].audioUrl;
+          audioRef.current.load();
+        }
+        setState((prev) => ({ 
+          ...prev, 
+          currentTime: 0, 
+          duration: tracks[index].durationSec || 240,
+          isPlaying: true
+        }));
+        setTimeout(() => {
+          playAudio(true);
+        }, 50);
+      }
+    }
   };
 
   const next = () => {
@@ -304,18 +385,37 @@ export function useAudioPlayer() {
     }
 
     if (state.isShuffle) {
-      const randIndex = Math.floor(Math.random() * tracks.length);
-      playTrack(randIndex);
+      if (tracks.length <= 1) {
+        playTrack(0, true);
+      } else {
+        let randIndex = state.currentTrackIndex;
+        while (randIndex === state.currentTrackIndex) {
+          randIndex = Math.floor(Math.random() * tracks.length);
+        }
+        playTrack(randIndex, true);
+      }
     } else {
       const nextIndex = (state.currentTrackIndex + 1) % tracks.length;
-      playTrack(nextIndex);
+      playTrack(nextIndex, true);
     }
   };
 
   const prev = () => {
     if (tracks.length === 0) return;
-    const prevIndex = (state.currentTrackIndex - 1 + tracks.length) % tracks.length;
-    playTrack(prevIndex);
+    if (state.isShuffle) {
+      if (tracks.length <= 1) {
+        playTrack(0, true);
+      } else {
+        let randIndex = state.currentTrackIndex;
+        while (randIndex === state.currentTrackIndex) {
+          randIndex = Math.floor(Math.random() * tracks.length);
+        }
+        playTrack(randIndex, true);
+      }
+    } else {
+      const prevIndex = (state.currentTrackIndex - 1 + tracks.length) % tracks.length;
+      playTrack(prevIndex, true);
+    }
   };
 
   const handleTrackEnded = () => {
@@ -335,6 +435,7 @@ export function useAudioPlayer() {
       }
     }
   };
+  handleTrackEndedRef.current = handleTrackEnded;
 
   const seek = (time: number) => {
     if (!audioRef.current) return;

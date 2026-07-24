@@ -7,41 +7,112 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
-  // Serve track list dynamically based on files inside public/musicfiles
+  // Serve track list dynamically by fetching from Ronit-CodeWizard's GitHub repository
   app.get("/api/tracks", async (req, res) => {
+    // Robust static fallback representing the exact list from the GitHub repository
+    const fallbackTracks = [
+      {
+        id: "github-0-chahun-main-ya-naa",
+        title: "Chahun Main Ya Naa",
+        artist: "Bhoomika",
+        album: "Aura Sessions",
+        duration: "4:00",
+        durationSec: 240,
+        coverUrl: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?q=80&w=500&auto=format&fit=crop",
+        audioUrl: "https://raw.githubusercontent.com/Ronit-CodeWizard/wizard-resources/main/Musics/BHO/Chahun%20Main%20Ya%20Naa%20-%20BHO.mp3",
+      },
+      {
+        id: "github-1-ishq-mubarak",
+        title: "Ishq Mubarak",
+        artist: "Bhoomika",
+        album: "Aura Sessions",
+        duration: "4:00",
+        durationSec: 240,
+        coverUrl: "https://images.unsplash.com/photo-1498038432885-c6f3f1b912ee?q=80&w=500&auto=format&fit=crop",
+        audioUrl: "https://raw.githubusercontent.com/Ronit-CodeWizard/wizard-resources/main/Musics/BHO/Ishq%20Mubarak%20-%20BHO.mp3",
+      },
+      {
+        id: "github-2-jeena-jeena",
+        title: "Jeena Jeena",
+        artist: "Bhoomika",
+        album: "Aura Sessions",
+        duration: "4:00",
+        durationSec: 240,
+        coverUrl: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?q=80&w=500&auto=format&fit=crop",
+        audioUrl: "https://raw.githubusercontent.com/Ronit-CodeWizard/wizard-resources/main/Musics/BHO/Jeena%20Jeena%20-%20BHO.mp3",
+      },
+      {
+        id: "github-3-nazar-na-lag-jaaye",
+        title: "Nazar Na Lag Jaaye",
+        artist: "Bhoomika",
+        album: "Aura Sessions",
+        duration: "4:00",
+        durationSec: 240,
+        coverUrl: "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?q=80&w=500&auto=format&fit=crop",
+        audioUrl: "https://raw.githubusercontent.com/Ronit-CodeWizard/wizard-resources/main/Musics/BHO/Nazar%20Na%20Lag%20Jaaye%20-%20BHO.mp3",
+      },
+      {
+        id: "github-4-saiyaara",
+        title: "Saiyaara",
+        artist: "Bhoomika",
+        album: "Aura Sessions",
+        duration: "4:00",
+        durationSec: 240,
+        coverUrl: "https://images.unsplash.com/photo-1511379938547-c1f69419868d?q=80&w=500&auto=format&fit=crop",
+        audioUrl: "https://raw.githubusercontent.com/Ronit-CodeWizard/wizard-resources/main/Musics/BHO/Saiyaara%20-%20BHO.mp3",
+      },
+      {
+        id: "github-5-tum-ho-toh",
+        title: "Tum Ho Toh",
+        artist: "Bhoomika",
+        album: "Aura Sessions",
+        duration: "4:00",
+        durationSec: 240,
+        coverUrl: "https://images.unsplash.com/photo-1501386761578-eac5c94b800a?q=80&w=500&auto=format&fit=crop",
+        audioUrl: "https://raw.githubusercontent.com/Ronit-CodeWizard/wizard-resources/main/Musics/BHO/Tum%20Ho%20Toh%20-%20BHO.mp3",
+      },
+    ];
+
     try {
-      const musicFilesDir = path.join(process.cwd(), "public", "musicfiles");
-      
-      // Ensure directory exists
-      if (!fs.existsSync(musicFilesDir)) {
-        fs.mkdirSync(musicFilesDir, { recursive: true });
+      // Fetch dynamic content list from GitHub API
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 4000); // 4 seconds timeout
+
+      const response = await fetch("https://api.github.com/repos/Ronit-CodeWizard/wizard-resources/contents/Musics/BHO", {
+        headers: {
+          "User-Agent": "Aura-Player-App",
+        },
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        throw new Error(`GitHub API responded with status ${response.status}`);
       }
 
-      const files = await fs.promises.readdir(musicFilesDir);
-      
-      const audioExtensions = [".mp3", ".m4a", ".wav", ".ogg", ".flac", ".aac", ".mp4"];
-      const audioFiles = files.filter(f => 
-        audioExtensions.some(ext => f.toLowerCase().endsWith(ext))
+      const files = await response.json() as any[];
+      if (!Array.isArray(files)) {
+        throw new Error("Invalid response format from GitHub");
+      }
+
+      const audioFiles = files.filter(
+        (f) => f.type === "file" && f.name.toLowerCase().endsWith(".mp3")
       );
 
-      // Predefined beautiful covers
+      // Predefined covers to assign
       const coverImages = [
         "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?q=80&w=500&auto=format&fit=crop",
         "https://images.unsplash.com/photo-1498038432885-c6f3f1b912ee?q=80&w=500&auto=format&fit=crop",
         "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?q=80&w=500&auto=format&fit=crop",
         "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?q=80&w=500&auto=format&fit=crop",
         "https://images.unsplash.com/photo-1511379938547-c1f69419868d?q=80&w=500&auto=format&fit=crop",
-        "https://images.unsplash.com/photo-1501386761578-eac5c94b800a?q=80&w=500&auto=format&fit=crop",
-        "https://images.unsplash.com/photo-1459749411175-04bf5292ceea?q=80&w=500&auto=format&fit=crop",
-        "https://images.unsplash.com/photo-1511192336575-5a79af67a629?q=80&w=500&auto=format&fit=crop",
-        "https://images.unsplash.com/photo-1506157786151-b8491531f063?q=80&w=500&auto=format&fit=crop"
+        "https://images.unsplash.com/photo-1501386761578-eac5c94b800a?q=80&w=500&auto=format&fit=crop"
       ];
 
       const mappedTracks = audioFiles.map((file, index) => {
-        // Clean name, e.g., "Teri hawayein - BHO.mp3" -> "Teri hawayein"
-        let title = file.replace(/\.[^/.]+$/, ""); // strip extension
+        let title = file.name.replace(/\.[^/.]+$/, ""); // Strip extension
         
-        // Remove trailing " - BHO" or similar if present
         if (title.includes(" - ")) {
           title = title.split(" - ")[0];
         } else if (title.includes("-")) {
@@ -50,21 +121,24 @@ async function startServer() {
         title = title.trim();
 
         return {
-          id: `local-${index}-${encodeURIComponent(file)}`,
+          id: `github-${index}-${encodeURIComponent(file.name)}`,
           title: title || "Untitled Track",
-          artist: "Bhoomika", // Artist is always "Bhoomika"
-          album: "Local Sessions",
+          artist: "Bhoomika",
+          album: "Aura Sessions",
           duration: "4:00",
           durationSec: 240,
           coverUrl: coverImages[index % coverImages.length],
-          audioUrl: `/musicfiles/${encodeURIComponent(file)}`, // Serves statically from public/musicfiles
+          audioUrl: file.download_url || `https://raw.githubusercontent.com/Ronit-CodeWizard/wizard-resources/main/Musics/BHO/${encodeURIComponent(file.name)}`,
         };
       });
 
-      res.json(mappedTracks);
+      if (mappedTracks.length > 0) {
+        return res.json(mappedTracks);
+      }
+      return res.json(fallbackTracks);
     } catch (err) {
-      console.error("Error reading music files:", err);
-      res.status(500).json({ error: "Failed to read music files directory" });
+      console.warn("GitHub fetch failed or rate limited, using premium offline fallback:", err);
+      return res.json(fallbackTracks);
     }
   });
 
