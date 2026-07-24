@@ -1,0 +1,6 @@
+{
+  "name": "Premium Music Player",
+  "description": "A premium, fully responsive music player featuring a beautiful glassmorphic UI, a rotating vinyl disc, circular progress seekbar, custom interactive visualizers, local audio streaming, playlist queueing, and smooth transitions.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
