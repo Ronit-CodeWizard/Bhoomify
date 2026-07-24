@@ -7,10 +7,22 @@ import { PlaylistScreen } from './components/PlaylistScreen';
 import { MiniPlayer } from './components/MiniPlayer';
 import { EqualizerScreen } from './components/EqualizerScreen';
 import { ProfileScreen } from './components/ProfileScreen';
+import { PasswordGate } from './components/PasswordGate';
 import { TabType, Track } from './types';
 import { Sparkles, Compass, Flame, Leaf, VolumeX, Keyboard } from 'lucide-react';
 
 export default function App() {
+  const [isUnlocked, setIsUnlocked] = useState<boolean>(() => {
+    const saved = sessionStorage.getItem('aura_unlocked');
+    return saved === 'true';
+  });
+
+  useEffect(() => {
+    if (isUnlocked) {
+      sessionStorage.setItem('aura_unlocked', 'true');
+    }
+  }, [isUnlocked]);
+
   const player = useAudioPlayer();
   const {
     tracks,
@@ -231,12 +243,18 @@ export default function App() {
             tracks={tracks}
             playTrack={playTrack}
             setVolume={setVolume}
+            totalPlays={player.totalPlays}
+            timeStreamedSec={player.timeStreamedSec}
           />
         );
       default:
         return null;
     }
   };
+
+  if (!isUnlocked) {
+    return <PasswordGate onUnlock={() => setIsUnlocked(true)} />;
+  }
 
   return (
     <div className="min-h-screen bg-neutral-950 flex flex-col items-center justify-center p-4 relative overflow-hidden font-sans select-none antialiased">

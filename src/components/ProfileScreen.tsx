@@ -8,6 +8,8 @@ interface ProfileScreenProps {
   tracks: Track[];
   playTrack: (index: number) => void;
   setVolume: (vol: number) => void;
+  totalPlays: number;
+  timeStreamedSec: number;
 }
 
 export function ProfileScreen({
@@ -15,6 +17,8 @@ export function ProfileScreen({
   tracks,
   playTrack,
   setVolume,
+  totalPlays,
+  timeStreamedSec,
 }: ProfileScreenProps) {
   const { likedTrackIds, volume } = state;
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
@@ -32,9 +36,9 @@ export function ProfileScreen({
   ];
 
   const stats = [
-    { label: 'Time Streamed', value: '38.4 hrs', icon: Clock, color: 'text-purple-400' },
+    { label: 'Time Streamed', value: (timeStreamedSec / 3600).toFixed(4) + ' hrs', icon: Clock, color: 'text-purple-400' },
     { label: 'Saved Tracks', value: likedTrackIds.length.toString(), icon: Heart, color: 'text-pink-400' },
-    { label: 'Total Plays', value: '412', icon: Music, color: 'text-cyan-400' },
+    { label: 'Total Plays', value: totalPlays.toLocaleString(), icon: Music, color: 'text-cyan-400' },
   ];
 
   const handleCopy = (keyText: string) => {
@@ -43,7 +47,7 @@ export function ProfileScreen({
     setTimeout(() => setCopiedKey(null), 1000);
   };
 
-  const userDisplayName = 'Studio Listener';
+  const userDisplayName = 'Ronit CodeWizard';
   const userPhotoUrl = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=200&auto=format&fit=crop';
 
   return (

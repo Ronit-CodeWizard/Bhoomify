@@ -20,6 +20,24 @@ export function useAudioPlayer() {
     return initialTracks;
   });
 
+  const [totalPlays, setTotalPlays] = useState<number>(() => {
+    const saved = localStorage.getItem('aura_total_plays');
+    return saved ? parseInt(saved, 10) : 1482;
+  });
+
+  const [timeStreamedSec, setTimeStreamedSec] = useState<number>(() => {
+    const saved = localStorage.getItem('aura_time_streamed_sec');
+    return saved ? parseInt(saved, 10) : Math.floor(38.4 * 3600); // 138240 seconds
+  });
+
+  useEffect(() => {
+    localStorage.setItem('aura_total_plays', totalPlays.toString());
+  }, [totalPlays]);
+
+  useEffect(() => {
+    localStorage.setItem('aura_time_streamed_sec', timeStreamedSec.toString());
+  }, [timeStreamedSec]);
+
   const [state, setState] = useState<PlayerState>(() => {
     const savedLiked = localStorage.getItem('aura_liked');
     const savedVolume = localStorage.getItem('aura_volume');
@@ -180,6 +198,15 @@ export function useAudioPlayer() {
     localStorage.setItem('aura_tracks', JSON.stringify(tracks));
   }, [tracks]);
 
+  // Track listening time in real-time
+  useEffect(() => {
+    if (!state.isPlaying) return;
+    const interval = setInterval(() => {
+      setTimeStreamedSec((prev) => prev + 1);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [state.isPlaying]);
+
   // Simulation fallback for browser-blocked autoplay or dead links
   const simulationTimerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -217,7 +244,12 @@ export function useAudioPlayer() {
       }
 
       stopSimulation();
-      setState((prev) => ({ ...prev, isPlaying: true }));
+      setState((prev) => {
+        if (!prev.isPlaying) {
+          setTotalPlays((p) => p + 1);
+        }
+        return { ...prev, isPlaying: true };
+      });
       await audioRef.current.play();
     } catch (err: any) {
       console.warn('Playback block or issue:', err);
@@ -225,6 +257,12 @@ export function useAudioPlayer() {
         setPlayError('Interaction required to play audio');
       }
       // Start simulated playback so the circular vinyl and seekbar still animate!
+      setState((prev) => {
+        if (!prev.isPlaying) {
+          setTotalPlays((p) => p + 1);
+        }
+        return { ...prev, isPlaying: true };
+      });
       startSimulation();
     }
   };
@@ -246,6 +284,7 @@ export function useAudioPlayer() {
 
   const playTrack = (index: number) => {
     if (index < 0 || index >= tracks.length) return;
+    setTotalPlays((p) => p + 1);
     setState((prev) => ({ ...prev, currentTrackIndex: index, isPlaying: true }));
     // Source useEffect will trigger loading and playback
   };
@@ -374,6 +413,8 @@ export function useAudioPlayer() {
     playError,
     audioElement: audioRef.current,
     analyserNode: analyserRef.current,
+    totalPlays,
+    timeStreamedSec,
     togglePlay,
     playTrack,
     next,
