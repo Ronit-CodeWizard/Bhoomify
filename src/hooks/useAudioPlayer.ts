@@ -155,69 +155,193 @@ export function useAudioPlayer() {
   // Fetch local music folder tracks on mount
   useEffect(() => {
     const loadLocalTracks = async () => {
+      const fallbackTracks: Track[] = [
+        {
+          id: "github-0-chahun-main-ya-naa",
+          title: "Chahun Main Ya Naa",
+          artist: "Bhoomika",
+          album: "Aura Sessions",
+          duration: "4:00",
+          durationSec: 240,
+          coverUrl: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?q=80&w=500&auto=format&fit=crop",
+          audioUrl: "https://raw.githubusercontent.com/Ronit-CodeWizard/wizard-resources/main/Musics/BHO/Chahun%20Main%20Ya%20Naa%20-%20BHO.mp3",
+        },
+        {
+          id: "github-1-ishq-mubarak",
+          title: "Ishq Mubarak",
+          artist: "Bhoomika",
+          album: "Aura Sessions",
+          duration: "4:00",
+          durationSec: 240,
+          coverUrl: "https://images.unsplash.com/photo-1498038432885-c6f3f1b912ee?q=80&w=500&auto=format&fit=crop",
+          audioUrl: "https://raw.githubusercontent.com/Ronit-CodeWizard/wizard-resources/main/Musics/BHO/Ishq%20Mubarak%20-%20BHO.mp3",
+        },
+        {
+          id: "github-2-jeena-jeena",
+          title: "Jeena Jeena",
+          artist: "Bhoomika",
+          album: "Aura Sessions",
+          duration: "4:00",
+          durationSec: 240,
+          coverUrl: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?q=80&w=500&auto=format&fit=crop",
+          audioUrl: "https://raw.githubusercontent.com/Ronit-CodeWizard/wizard-resources/main/Musics/BHO/Jeena%20Jeena%20-%20BHO.mp3",
+        },
+        {
+          id: "github-3-nazar-na-lag-jaaye",
+          title: "Nazar Na Lag Jaaye",
+          artist: "Bhoomika",
+          album: "Aura Sessions",
+          duration: "4:00",
+          durationSec: 240,
+          coverUrl: "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?q=80&w=500&auto=format&fit=crop",
+          audioUrl: "https://raw.githubusercontent.com/Ronit-CodeWizard/wizard-resources/main/Musics/BHO/Nazar%20Na%20Lag%20Jaaye%20-%20BHO.mp3",
+        },
+        {
+          id: "github-4-saiyaara",
+          title: "Saiyaara",
+          artist: "Bhoomika",
+          album: "Aura Sessions",
+          duration: "4:00",
+          durationSec: 240,
+          coverUrl: "https://images.unsplash.com/photo-1511379938547-c1f69419868d?q=80&w=500&auto=format&fit=crop",
+          audioUrl: "https://raw.githubusercontent.com/Ronit-CodeWizard/wizard-resources/main/Musics/BHO/Saiyaara%20-%20BHO.mp3",
+        },
+        {
+          id: "github-5-tum-ho-toh",
+          title: "Tum Ho Toh",
+          artist: "Bhoomika",
+          album: "Aura Sessions",
+          duration: "4:00",
+          durationSec: 240,
+          coverUrl: "https://images.unsplash.com/photo-1501386761578-eac5c94b800a?q=80&w=500&auto=format&fit=crop",
+          audioUrl: "https://raw.githubusercontent.com/Ronit-CodeWizard/wizard-resources/main/Musics/BHO/Tum%20Ho%20Toh%20-%20BHO.mp3",
+        },
+      ];
+
+      let fetchedTracks: Track[] = [];
+
       try {
+        // Step 1: Attempt to fetch from local API endpoint
         const response = await fetch('/api/tracks');
         if (response.ok) {
-          const localTracks = await response.json() as Track[];
-          if (localTracks && localTracks.length > 0) {
-            // Restore from localStorage cached metadata if available
-            const savedStr = localStorage.getItem('aura_tracks');
-            let savedTracks: Track[] = [];
-            if (savedStr) {
-              try {
-                savedTracks = JSON.parse(savedStr);
-              } catch (e) {}
+          const contentType = response.headers.get('content-type');
+          if (contentType && contentType.includes('application/json')) {
+            const localTracks = await response.json() as Track[];
+            if (localTracks && localTracks.length > 0) {
+              fetchedTracks = localTracks;
             }
-
-            const mergedTracks = localTracks.map((track) => {
-              const saved = savedTracks.find((t) => t.id === track.id);
-              if (saved) {
-                return {
-                  ...track,
-                  duration: saved.duration || track.duration,
-                  durationSec: saved.durationSec || track.durationSec,
-                };
-              }
-              return track;
-            });
-
-            setTracks(mergedTracks);
-
-            // Preload metadata to resolve correct audio duration in the background
-            mergedTracks.forEach((track, idx) => {
-              if (track.audioUrl && (!track.durationSec || track.durationSec === 240)) {
-                const tempAudio = new Audio();
-                tempAudio.src = track.audioUrl;
-                tempAudio.preload = 'metadata';
-                tempAudio.addEventListener('loadedmetadata', () => {
-                  if (tempAudio.duration && !isNaN(tempAudio.duration)) {
-                    const durationSec = tempAudio.duration;
-                    const mins = Math.floor(durationSec / 60);
-                    const secs = Math.floor(durationSec % 60);
-                    const durationStr = `${mins}:${secs < 10 ? '0' : ''}${secs}`;
-
-                    setTracks((prevTracks) => {
-                      const updated = [...prevTracks];
-                      const trackIdx = updated.findIndex((t) => t.id === track.id);
-                      if (trackIdx !== -1) {
-                        updated[trackIdx] = {
-                          ...updated[trackIdx],
-                          duration: durationStr,
-                          durationSec: Math.floor(durationSec),
-                        };
-                      }
-                      return updated;
-                    });
-                  }
-                });
-              }
-            });
           }
         }
       } catch (err) {
-        console.error('Error fetching local tracks:', err);
+        console.warn('Local tracks endpoint not reachable, fetching directly from GitHub...', err);
       }
+
+      // Step 2: If local endpoint didn't return tracks, fetch directly from GitHub
+      if (fetchedTracks.length === 0) {
+        try {
+          const ghResponse = await fetch('https://api.github.com/repos/Ronit-CodeWizard/wizard-resources/contents/Musics/BHO');
+          if (ghResponse.ok) {
+            const files = await ghResponse.json() as any[];
+            if (Array.isArray(files) && files.length > 0) {
+              const audioFiles = files.filter(
+                (f) => f.type === 'file' && f.name.toLowerCase().endsWith('.mp3')
+              );
+
+              const coverImages = [
+                "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?q=80&w=500&auto=format&fit=crop",
+                "https://images.unsplash.com/photo-1498038432885-c6f3f1b912ee?q=80&w=500&auto=format&fit=crop",
+                "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?q=80&w=500&auto=format&fit=crop",
+                "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?q=80&w=500&auto=format&fit=crop",
+                "https://images.unsplash.com/photo-1511379938547-c1f69419868d?q=80&w=500&auto=format&fit=crop",
+                "https://images.unsplash.com/photo-1501386761578-eac5c94b800a?q=80&w=500&auto=format&fit=crop"
+              ];
+
+              fetchedTracks = audioFiles.map((file, index) => {
+                let title = file.name.replace(/\.[^/.]+$/, ""); // Strip extension
+                if (title.includes(" - ")) {
+                  title = title.split(" - ")[0];
+                } else if (title.includes("-")) {
+                  title = title.split("-")[0];
+                }
+                title = title.trim();
+
+                return {
+                  id: `github-${index}-${encodeURIComponent(file.name)}`,
+                  title: title || "Untitled Track",
+                  artist: "Bhoomika",
+                  album: "Aura Sessions",
+                  duration: "4:00",
+                  durationSec: 240,
+                  coverUrl: coverImages[index % coverImages.length],
+                  audioUrl: file.download_url || `https://raw.githubusercontent.com/Ronit-CodeWizard/wizard-resources/main/Musics/BHO/${encodeURIComponent(file.name)}`,
+                };
+              });
+            }
+          }
+        } catch (ghErr) {
+          console.warn('Direct GitHub fetch failed, loading static premium fallbacks', ghErr);
+        }
+      }
+
+      // Step 3: Use static tracks if both failed
+      if (fetchedTracks.length === 0) {
+        fetchedTracks = fallbackTracks;
+      }
+
+      // Restore custom duration / info from localStorage
+      const savedStr = localStorage.getItem('aura_tracks');
+      let savedTracks: Track[] = [];
+      if (savedStr) {
+        try {
+          savedTracks = JSON.parse(savedStr);
+        } catch (e) {}
+      }
+
+      const mergedTracks = fetchedTracks.map((track) => {
+        const saved = savedTracks.find((t) => t.id === track.id);
+        if (saved) {
+          return {
+            ...track,
+            duration: saved.duration || track.duration,
+            durationSec: saved.durationSec || track.durationSec,
+          };
+        }
+        return track;
+      });
+
+      setTracks(mergedTracks);
+
+      // Preload metadata to resolve correct audio duration in the background
+      mergedTracks.forEach((track) => {
+        if (track.audioUrl && (!track.durationSec || track.durationSec === 240)) {
+          const tempAudio = new Audio();
+          tempAudio.src = track.audioUrl;
+          tempAudio.preload = 'metadata';
+          tempAudio.addEventListener('loadedmetadata', () => {
+            if (tempAudio.duration && !isNaN(tempAudio.duration)) {
+              const durationSec = tempAudio.duration;
+              const mins = Math.floor(durationSec / 60);
+              const secs = Math.floor(durationSec % 60);
+              const durationStr = `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+
+              setTracks((prevTracks) => {
+                const updated = [...prevTracks];
+                const trackIdx = updated.findIndex((t) => t.id === track.id);
+                if (trackIdx !== -1) {
+                  updated[trackIdx] = {
+                    ...updated[trackIdx],
+                    duration: durationStr,
+                    durationSec: Math.floor(durationSec),
+                  };
+                }
+                return updated;
+              });
+            }
+          });
+        }
+      });
     };
+
     loadLocalTracks();
   }, []);
 
