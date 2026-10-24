@@ -1,10 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Shuffle, SkipBack, Play, Pause, SkipForward, Repeat, Heart, MoreVertical, ChevronDown, Cloud, Music } from 'lucide-react';
+import { Shuffle, SkipBack, Play, Pause, SkipForward, Repeat, Heart, MoreVertical, ChevronDown, ListMusic, Upload } from 'lucide-react';
 import { Track, PlayerState } from '../types';
+import { MonochromeDiscLabel } from './MonochromeDiscLabel';
+import { CloudPopup } from './CloudPopup';
 
 interface VinylPlayerProps {
-  currentTrack: Track;
+  currentTrack?: Track | null;
   tracks: Track[];
   state: PlayerState;
   playError: string | null;
@@ -17,7 +19,9 @@ interface VinylPlayerProps {
   toggleLike: (trackId: string) => void;
   playTrack: (index: number) => void;
   onOpenMenu?: () => void;
+  onTogglePlaylist?: () => void;
   isDownloadingDriveFile?: boolean;
+  onAddTracks?: (tracks: Track[]) => void;
 }
 
 export function VinylPlayer({
@@ -34,15 +38,85 @@ export function VinylPlayer({
   toggleLike,
   playTrack,
   onOpenMenu,
+  onTogglePlaylist,
   isDownloadingDriveFile,
+  onAddTracks,
 }: VinylPlayerProps) {
   const { isPlaying, currentTime, duration, isShuffle, isRepeat, likedTrackIds, currentTrackIndex } = state;
 
-  const isLiked = likedTrackIds.includes(currentTrack?.id);
+  // Favorite state: always true by default, flips to false briefly on click before snapping back to true
+  const [isTemporarilyUnliked, setIsTemporarilyUnliked] = useState(false);
+  const [showCloud, setShowCloud] = useState(false);
+  const [isLowered, setIsLowered] = useState(false);
+  const unlikedTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const cloudTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // For the circular progress
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+    const files = Array.from(e.target.files);
+    const newTracks: Track[] = files.map((file, i) => {
+      const url = URL.createObjectURL(file);
+      const fileName = file.name.replace(/\.[^/.]+$/, '');
+      let title = fileName;
+      let artist = 'Local Audio';
+      if (fileName.includes(' - ')) {
+        const parts = fileName.split(' - ');
+        artist = parts[0].trim();
+        title = parts[1].trim();
+      }
+      return {
+        id: `user-${Date.now()}-${i}-${Math.random().toString(36).substr(2, 6)}`,
+        title: title || 'Untitled Audio',
+        artist: artist || 'Local Track',
+        album: 'My Collection',
+        duration: '0:00',
+        durationSec: 0,
+        coverUrl: '',
+        audioUrl: url,
+        blobUrl: url,
+      };
+    });
+    onAddTracks?.(newTracks);
+    e.target.value = '';
+  };
+
+  useEffect(() => {
+    return () => {
+      if (unlikedTimerRef.current) clearTimeout(unlikedTimerRef.current);
+      if (cloudTimerRef.current) clearTimeout(cloudTimerRef.current);
+    };
+  }, []);
+
+  const effectiveIsLiked = isTemporarilyUnliked ? false : true;
+
+  const handleFavoriteClick = () => {
+    if (unlikedTimerRef.current) clearTimeout(unlikedTimerRef.current);
+    if (cloudTimerRef.current) clearTimeout(cloudTimerRef.current);
+
+    // 1. Immediately pop up the cloud warning
+    setShowCloud(true);
+
+    // 2. Visually show toggling to false/unfavourite
+    setIsTemporarilyUnliked(true);
+    if (currentTrack?.id) {
+      toggleLike(currentTrack.id);
+    }
+
+    // 3. Automatically turn back to true after 650ms
+    unlikedTimerRef.current = setTimeout(() => {
+      setIsTemporarilyUnliked(false);
+    }, 650);
+
+    // 4. Automatically dismiss cloud after 3.8s
+    cloudTimerRef.current = setTimeout(() => {
+      setShowCloud(false);
+    }, 3800);
+  };
+
+  // Circular progress calculation
   const radius = 100;
-  const strokeWidth = 3;
+  const strokeWidth = 3.5;
   const circumference = 2 * Math.PI * radius;
   const progress = duration > 0 ? currentTime / duration : 0;
   const strokeDashoffset = circumference - progress * circumference;
@@ -70,12 +144,9 @@ export function VinylPlayer({
     const dx = clientX - centerX;
     const dy = clientY - centerY;
 
-    // Calculate angle in radians: from -PI to PI
-    // We adjust it so 12 o'clock is 0 or -PI/2
     let angle = Math.atan2(dy, dx) + Math.PI / 2;
     if (angle < 0) angle += 2 * Math.PI;
 
-    // Convert angle to percentage (0 to 1)
     const pct = angle / (2 * Math.PI);
     seek(pct * duration);
   };
@@ -100,103 +171,156 @@ export function VinylPlayer({
     return `${m}:${s < 10 ? '0' : ''}${s}`;
   };
 
-  if (tracks.length === 0) {
-    return (
-      <div id="vinyl-player-empty" className="flex flex-col items-center justify-center h-full text-center px-6 pb-20 select-none">
-        <div className="w-16 h-16 rounded-3xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center mb-6 animate-pulse">
-          <Music className="w-8 h-8 text-purple-400" />
-        </div>
-        <h1 className="text-2xl font-bold font-display tracking-tight text-white mb-2">Empty Library</h1>
-        <p className="text-sm text-white/50 max-w-xs leading-relaxed mb-8">
-          Place your audio files (MP3, M4A, etc.) inside the <code className="bg-white/15 px-1.5 py-0.5 rounded text-purple-300">public/musicfiles</code> directory to scan and load your tracks.
-        </p>
-      </div>
-    );
-  }
-
   return (
-    <div id="vinyl-player-screen" className="flex flex-col items-center h-full text-white select-none px-6 pt-6">
-      {/* Top Header Row */}
-      <div className="w-full flex items-center justify-between mb-8">
-        <button className="text-white/70 hover:text-white p-2 bg-white/5 hover:bg-white/10 rounded-full transition-all cursor-pointer">
-          <ChevronDown className="w-5 h-5" />
-        </button>
-        <div className="w-12 h-1.5 bg-white/10 rounded-full" />
-        <button 
-          onClick={onOpenMenu}
-          className="text-white/70 hover:text-white p-2 bg-white/5 hover:bg-white/10 rounded-full transition-all cursor-pointer"
+    <div
+      id="vinyl-player"
+      className="relative flex flex-col items-center justify-between h-full w-full px-6 pt-5 pb-6 text-black select-none overflow-hidden"
+    >
+      {/* Top Bar Header Buttons Section */}
+      <div className="w-full flex items-center justify-between mb-3 shrink-0">
+        <motion.button
+          onClick={() => setIsLowered((prev) => !prev)}
+          className={`p-2.5 rounded-full transition-all cursor-pointer border ${
+            isLowered
+              ? 'bg-black text-white border-black shadow-md'
+              : 'text-black/60 hover:text-black bg-black/5 hover:bg-black/10 border-black/10'
+          }`}
+          title={isLowered ? 'Raise Player' : 'Lower Player'}
+          aria-label={isLowered ? 'Raise Player' : 'Lower Player'}
+          animate={{ rotate: isLowered ? 180 : 0 }}
+          transition={{ duration: 0.25 }}
         >
-          <MoreVertical className="w-5 h-5" />
-        </button>
+          <ChevronDown className="w-4 h-4" />
+        </motion.button>
+        <div />
+        <div className="flex items-center gap-2">
+          {onTogglePlaylist && (
+            <button
+              onClick={onTogglePlaylist}
+              className="text-black/60 hover:text-black p-2.5 bg-black/5 hover:bg-black/10 rounded-full transition-all cursor-pointer border border-black/10"
+              title="Toggle Tracks Playlist"
+            >
+              <ListMusic className="w-4 h-4" />
+            </button>
+          )}
+          <button 
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+            }}
+            className="text-black/25 p-2.5 bg-black/5 rounded-full border border-black/10 cursor-default select-none transition-none"
+            aria-label="Options"
+          >
+            <MoreVertical className="w-4 h-4" />
+          </button>
+        </div>
       </div>
+
+      {/* Space created UNDER the top header buttons section showing MADE BY RONIT MAJHI */}
+      <AnimatePresence>
+        {isLowered && (
+          <motion.div
+            initial={{ opacity: 0, y: -8, height: 0 }}
+            animate={{ opacity: 1, y: 0, height: 'auto' }}
+            exit={{ opacity: 0, y: -8, height: 0 }}
+            transition={{ type: 'spring', stiffness: 380, damping: 28 }}
+            className="w-full flex items-center justify-center overflow-hidden mb-4 shrink-0 z-40"
+          >
+            <span className="text-xs sm:text-[13px] font-mono font-bold tracking-[0.22em] text-black uppercase select-all py-1">
+              MADE BY RONIT MAJHI
+            </span>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Song Details Header */}
-      <div className="w-full flex items-start justify-between mb-8 pr-1">
-        <div className="flex flex-col">
+      <div className="w-full flex items-start justify-between mb-4 px-1 relative z-30">
+        <div className="flex flex-col min-w-0 pr-3">
           <AnimatePresence mode="wait">
             <motion.h1
               key={currentTrack?.title}
-              initial={{ opacity: 0, y: -10 }}
+              initial={{ opacity: 0, y: -6 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 10 }}
-              className="text-3xl font-bold tracking-tight text-white font-display"
+              exit={{ opacity: 0, y: 6 }}
+              className="text-2xl sm:text-3xl font-bold tracking-tight text-black font-display truncate"
             >
-              {currentTrack?.title}
+              {currentTrack?.title || 'No Track Selected'}
             </motion.h1>
           </AnimatePresence>
           <AnimatePresence mode="wait">
             <motion.p
               key={currentTrack?.artist}
-              initial={{ opacity: 0, y: -5 }}
+              initial={{ opacity: 0, y: -4 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 5 }}
-              className="text-base text-white/50 font-medium mt-1"
+              exit={{ opacity: 0, y: 4 }}
+              className="text-sm sm:text-base text-black/55 font-medium mt-1 truncate"
             >
-              {currentTrack?.artist}
+              {currentTrack?.artist || 'Upload or add audio files to play'}
             </motion.p>
           </AnimatePresence>
         </div>
 
-        {/* Favorite Icon */}
-        <motion.button
-          onClick={() => toggleLike(currentTrack?.id)}
-          whileTap={{ scale: 0.8 }}
-          className="p-2 cursor-pointer"
-        >
-          <Heart
-            className={`w-6 h-6 transition-all duration-300 ${
-              isLiked 
-                ? 'fill-pink-500 text-pink-500 drop-shadow-[0_0_8px_rgba(236,72,153,0.6)]' 
-                : 'text-white/60 hover:text-white'
-            }`}
-          />
-        </motion.button>
+        {/* Favorite Icon with Cloud Warning Popup */}
+        <div className="relative shrink-0 z-30">
+          <motion.button
+            onClick={handleFavoriteClick}
+            whileTap={{ scale: 0.82 }}
+            animate={
+              isTemporarilyUnliked
+                ? { scale: 0.85, rotate: -4 }
+                : { scale: [0.85, 1.35, 1], rotate: 0 }
+            }
+            transition={{ duration: 0.35, ease: 'easeOut' }}
+            className="p-2.5 rounded-full bg-black/5 hover:bg-black/10 border border-black/10 cursor-pointer shrink-0 transition-colors"
+            title={effectiveIsLiked ? 'Favorited' : 'Unfavorited'}
+          >
+            <Heart
+              className={`w-5 h-5 transition-all duration-300 ${
+                effectiveIsLiked 
+                  ? 'fill-black text-black drop-shadow-[0_0_8px_rgba(0,0,0,0.35)]' 
+                  : 'fill-transparent text-black/25'
+              }`}
+            />
+          </motion.button>
+
+          {/* Cloud Container Pop-up */}
+          <AnimatePresence>
+            {showCloud && (
+              <div className="absolute right-0 top-12 z-50">
+                <CloudPopup
+                  tailDirection="up"
+                  onClose={() => setShowCloud(false)}
+                />
+              </div>
+            )}
+          </AnimatePresence>
+        </div>
       </div>
 
-      {/* Vinyl Disc & Circular Seek Container with Peeking Covers */}
-      <div className="relative w-full flex items-center justify-center my-6 h-[270px] overflow-visible">
-        {/* Left Peeking Album Cover */}
-        <div 
-          onClick={prev}
-          className="absolute -left-[140px] w-[180px] h-[180px] rounded-full overflow-hidden border border-white/5 bg-black/40 opacity-20 hover:opacity-40 transition-all duration-300 transform scale-90 cursor-pointer flex-shrink-0 select-none z-10"
-        >
-          <img
-            src={prevTrack?.coverUrl}
-            alt={prevTrack?.title}
-            className="w-full h-full object-cover pointer-events-none filter blur-[1px]"
-            referrerPolicy="no-referrer"
-          />
-        </div>
+      {/* Vinyl Disc & Circular Seek Container with Peeking Discs */}
+      <div className="relative w-full flex items-center justify-center my-auto py-4 overflow-visible">
+        {/* Left Peeking Monochromatic Disc */}
+        {tracks.length > 1 && prevTrack && (
+          <div 
+            onClick={prev}
+            className="absolute -left-[110px] sm:-left-[130px] w-[150px] sm:w-[170px] h-[150px] sm:h-[170px] rounded-full overflow-hidden border border-black/10 opacity-30 hover:opacity-60 transition-all duration-300 transform scale-90 cursor-pointer flex-shrink-0 select-none z-10 shadow-lg"
+            title={`Previous: ${prevTrack?.title}`}
+          >
+            <MonochromeDiscLabel track={prevTrack} size="md" showDetails={false} />
+          </div>
+        )}
 
         {/* Center Vinyl + Acrylic Progress Ring */}
-        <div className="relative w-[230px] h-[230px] flex items-center justify-center z-20">
+        <div className="relative w-[240px] sm:w-[260px] h-[240px] sm:h-[260px] flex items-center justify-center z-20">
           {/* Glass Inner Rim Shadow */}
-          <div className="absolute inset-0 rounded-full border border-white/10 bg-white/5 backdrop-blur-[2px] shadow-[inset_0_4px_20px_rgba(255,255,255,0.05),0_15px_35px_rgba(0,0,0,0.6)]" />
+          <div className="absolute inset-0 rounded-full border border-black/10 bg-black/[0.02] shadow-[inset_0_4px_25px_rgba(0,0,0,0.03),0_20px_45px_rgba(0,0,0,0.08)]" />
 
-          {/* Glowing Vinyl Track Progress Line Circle */}
+          {/* Glowing Vinyl Track Progress Line Circle in Pure Black */}
           <svg
             ref={progressRingRef}
             className="absolute top-0 left-0 w-full h-full transform -rotate-90 cursor-pointer select-none"
+            viewBox="0 0 230 230"
             onMouseDown={(e) => {
               setIsDragging(true);
               handleSeekDrag(e);
@@ -212,31 +336,31 @@ export function VinylPlayer({
               if (isDragging) handleSeekDrag(e);
             }}
           >
-            {/* Dark track track background */}
+            {/* Background track circle */}
             <circle
               cx="115"
               cy="115"
               r={radius}
               fill="transparent"
-              stroke="rgba(255,255,255,0.05)"
+              stroke="rgba(0, 0, 0, 0.1)"
               strokeWidth={strokeWidth}
             />
-            {/* Glowing neon-blue progress arc */}
+            {/* Glowing Pure Black progress arc */}
             <circle
               cx="115"
               cy="115"
               r={radius}
               fill="transparent"
-              stroke="#00E5FF"
+              stroke="#000000"
               strokeWidth={strokeWidth}
               strokeDasharray={circumference}
               strokeDashoffset={strokeDashoffset}
               strokeLinecap="round"
-              className="transition-all duration-150 drop-shadow-[0_0_5px_rgba(0,229,255,0.8)]"
+              className="transition-all duration-150 drop-shadow-[0_0_6px_rgba(0,0,0,0.35)]"
             />
           </svg>
 
-          {/* Vinyl Disc Body (Rotating Grooved Disk) */}
+          {/* Vinyl Disc Body (Rotating Grooved Disk with MonochromeDiscLabel) */}
           <motion.div
             animate={{ rotate: isPlaying ? 360 : 0 }}
             transition={{
@@ -246,82 +370,86 @@ export function VinylPlayer({
                 ease: 'linear',
               },
             }}
-            className="relative w-[180px] h-[180px] rounded-full bg-[#0d0d0d] border border-neutral-900 flex items-center justify-center shadow-[inset_0_0_15px_rgba(255,255,255,0.05),0_10px_25px_rgba(0,0,0,0.8)] cursor-pointer"
-            onClick={togglePlay}
+            className="relative w-[190px] sm:w-[200px] h-[190px] sm:h-[200px] rounded-full bg-[#111111] border border-black/80 flex items-center justify-center shadow-[inset_0_0_20px_rgba(255,255,255,0.05),0_15px_35px_rgba(0,0,0,0.25)] cursor-pointer"
+            onClick={tracks.length === 0 ? () => fileInputRef.current?.click() : togglePlay}
           >
             {/* Vinyl Grooves Texture */}
-            <div className="absolute inset-2 rounded-full border border-neutral-800/80 pointer-events-none" />
-            <div className="absolute inset-4 rounded-full border border-neutral-800/60 pointer-events-none" />
-            <div className="absolute inset-6 rounded-full border border-neutral-800/40 pointer-events-none" />
-            <div className="absolute inset-8 rounded-full border border-neutral-800/20 pointer-events-none" />
-            <div className="absolute inset-10 rounded-full border border-neutral-800/10 pointer-events-none" />
+            <div className="absolute inset-2 rounded-full border border-white/[0.08] pointer-events-none" />
+            <div className="absolute inset-4 rounded-full border border-white/[0.08] pointer-events-none" />
+            <div className="absolute inset-6 rounded-full border border-white/[0.08] pointer-events-none" />
+            <div className="absolute inset-8 rounded-full border border-white/[0.06] pointer-events-none" />
+            <div className="absolute inset-10 rounded-full border border-white/[0.06] pointer-events-none" />
 
-            {/* Inner Album Artwork Label */}
-            <div className="w-[110px] h-[110px] rounded-full overflow-hidden border-[3px] border-[#151515] shadow-lg flex-shrink-0 relative">
-              <AnimatePresence mode="wait">
-                <motion.img
-                  key={currentTrack?.coverUrl}
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.9 }}
-                  transition={{ duration: 0.3 }}
-                  src={currentTrack?.coverUrl}
-                  alt={currentTrack?.title}
-                  className="w-full h-full object-cover"
-                  referrerPolicy="no-referrer"
-                />
-              </AnimatePresence>
+            {/* Inner Monochrome Label (Crisp White Label with Black details) */}
+            <div className="w-[120px] sm:w-[130px] h-[120px] sm:h-[130px] rounded-full overflow-hidden flex-shrink-0 relative">
+              {currentTrack ? (
+                <MonochromeDiscLabel track={currentTrack} size="lg" />
+              ) : (
+                <div
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    fileInputRef.current?.click();
+                  }}
+                  className="w-full h-full bg-white flex flex-col items-center justify-center p-2 text-center cursor-pointer group hover:bg-black/5 transition-colors"
+                  title="Click to add audio file"
+                >
+                  <Upload className="w-5 h-5 text-black/60 group-hover:scale-110 transition-transform mb-1" />
+                  <span className="text-[8px] font-mono font-bold tracking-widest text-black/70 uppercase">
+                    ADD SONG
+                  </span>
+                </div>
+              )}
+
               {isDownloadingDriveFile && (
-                <div className="absolute inset-0 bg-black/75 flex flex-col items-center justify-center text-center z-10">
-                  <div className="w-5 h-5 rounded-full border-2 border-purple-500/30 border-t-purple-400 animate-spin mb-1 drop-shadow-[0_0_8px_rgba(168,85,247,0.5)]" />
-                  <span className="text-[8px] font-bold text-purple-300 uppercase tracking-widest animate-pulse">Streaming</span>
+                <div className="absolute inset-0 bg-white/90 flex flex-col items-center justify-center text-center z-10 rounded-full">
+                  <div className="w-5 h-5 rounded-full border-2 border-black/30 border-t-black animate-spin mb-1 drop-shadow-[0_0_8px_rgba(0,0,0,0.3)]" />
+                  <span className="text-[7.5px] font-mono text-black tracking-widest uppercase font-bold animate-pulse">STREAMING</span>
                 </div>
               )}
             </div>
 
-            {/* Central Spindle Hole */}
-            <div className="absolute w-4 h-4 rounded-full bg-[#121212] border-2 border-[#1a1a1a] shadow-inner flex items-center justify-center z-10">
-              <div className="w-1.5 h-1.5 rounded-full bg-[#e5e5e5]" />
+            {/* Central Spindle Hole with black accent */}
+            <div className="absolute w-4 h-4 rounded-full bg-white border-2 border-black/50 shadow-inner flex items-center justify-center z-20 pointer-events-none">
+              <div className="w-1.5 h-1.5 rounded-full bg-black" />
             </div>
           </motion.div>
 
           {/* Time Display centered underneath the disc, inside the outer ring */}
-          <div className="absolute bottom-[16px] text-xs font-semibold tracking-wider text-white/60 select-none">
+          <div className="absolute bottom-3 text-xs font-mono font-bold tracking-widest text-black/70 select-none">
             {formatTime(currentTime)}
           </div>
         </div>
 
-        {/* Right Peeking Album Cover */}
-        <div 
-          onClick={next}
-          className="absolute -right-[140px] w-[180px] h-[180px] rounded-full overflow-hidden border border-white/5 bg-black/40 opacity-20 hover:opacity-40 transition-all duration-300 transform scale-90 cursor-pointer flex-shrink-0 select-none z-10"
-        >
-          <img
-            src={nextTrack?.coverUrl}
-            alt={nextTrack?.title}
-            className="w-full h-full object-cover pointer-events-none filter blur-[1px]"
-            referrerPolicy="no-referrer"
-          />
-        </div>
+        {/* Right Peeking Monochromatic Disc */}
+        {tracks.length > 1 && nextTrack && (
+          <div 
+            onClick={next}
+            className="absolute -right-[110px] sm:-right-[130px] w-[150px] sm:w-[170px] h-[150px] sm:h-[170px] rounded-full overflow-hidden border border-black/10 opacity-30 hover:opacity-60 transition-all duration-300 transform scale-90 cursor-pointer flex-shrink-0 select-none z-10 shadow-lg"
+            title={`Next: ${nextTrack?.title}`}
+          >
+            <MonochromeDiscLabel track={nextTrack} size="md" showDetails={false} />
+          </div>
+        )}
       </div>
 
-      {/* Autoplay blocked error notice */}
+      {/* Playback error notice */}
       {playError && (
-        <div className="text-xs bg-purple-500/10 border border-purple-500/20 rounded-full px-4 py-1.5 mb-2 text-purple-300 animate-pulse text-center w-full max-w-[280px]">
-          Click vinyl/play to enable audio stream
+        <div className="text-xs bg-black/5 border border-black/20 rounded-2xl px-4 py-2 my-2 text-black/90 text-center w-full max-w-[320px] font-mono leading-tight">
+          {playError}
         </div>
       )}
 
-      {/* Main Playback Controls Section */}
-      <div className="w-full max-w-[280px] flex items-center justify-between mt-auto mb-28">
+      {/* Main Playback Controls Section in Inverted Monochromatic Black */}
+      <div className="w-full max-w-[320px] flex items-center justify-between mt-auto pt-4 pb-2">
         {/* Shuffle Button */}
         <button
           onClick={toggleShuffle}
-          className={`p-2 transition-all duration-300 rounded-full cursor-pointer hover:bg-white/5 ${
+          className={`p-2.5 transition-all duration-300 rounded-full cursor-pointer hover:bg-black/10 ${
             isShuffle 
-              ? 'text-purple-400 drop-shadow-[0_0_8px_rgba(168,85,247,0.8)] scale-110' 
-              : 'text-white/40 hover:text-white/70'
+              ? 'text-black drop-shadow-[0_0_8px_rgba(0,0,0,0.5)] scale-110' 
+              : 'text-black/40 hover:text-black'
           }`}
+          title={isShuffle ? 'Shuffle On' : 'Shuffle Off'}
         >
           <Shuffle className="w-5 h-5" />
         </button>
@@ -329,48 +457,77 @@ export function VinylPlayer({
         {/* Previous Track Button */}
         <button
           onClick={prev}
-          className="p-3 text-white/70 hover:text-white hover:scale-110 active:scale-95 transition-all rounded-full bg-white/5 hover:bg-white/10 cursor-pointer"
+          className="p-3 text-black/80 hover:text-black hover:scale-105 active:scale-95 transition-all rounded-full bg-black/5 hover:bg-black/10 border border-black/10 cursor-pointer"
+          title="Previous Track"
         >
           <SkipBack className="w-5 h-5 fill-current" />
         </button>
 
-        {/* Play / Pause Toggle Button */}
+        {/* Play / Pause Toggle Button (Inverted: Solid Black Circle with White Icon) */}
         <button
-          onClick={togglePlay}
-          className="relative w-14 h-14 rounded-full flex items-center justify-center bg-white text-black hover:scale-105 active:scale-95 transition-all shadow-[0_4px_20px_rgba(255,255,255,0.25)] cursor-pointer"
+          onClick={tracks.length === 0 ? () => fileInputRef.current?.click() : togglePlay}
+          className="relative w-15 h-15 rounded-full flex items-center justify-center bg-black text-white hover:scale-105 active:scale-95 transition-all shadow-[0_4px_25px_rgba(0,0,0,0.3)] cursor-pointer"
+          title={tracks.length === 0 ? 'Upload audio' : isPlaying ? 'Pause' : 'Play'}
         >
-          {isPlaying ? (
-            <Pause className="w-6 h-6 fill-black stroke-black" />
+          {tracks.length === 0 ? (
+            <Upload className="w-5 h-5 text-white" />
+          ) : isPlaying ? (
+            <Pause className="w-6 h-6 fill-white stroke-white" />
           ) : (
-            <Play className="w-6 h-6 fill-black stroke-black ml-0.5" />
+            <Play className="w-6 h-6 fill-white stroke-white ml-0.5" />
           )}
         </button>
 
         {/* Next Track Button */}
         <button
           onClick={next}
-          className="p-3 text-white/70 hover:text-white hover:scale-110 active:scale-95 transition-all rounded-full bg-white/5 hover:bg-white/10 cursor-pointer"
+          className="p-3 text-black/80 hover:text-black hover:scale-105 active:scale-95 transition-all rounded-full bg-black/5 hover:bg-black/10 border border-black/10 cursor-pointer"
+          title="Next Track"
         >
           <SkipForward className="w-5 h-5 fill-current" />
         </button>
 
-        {/* Repeat Button */}
+        {/* Repeat Button (3 Phases: 1. Next Song [Always On], 2. Repeat Song [1 on top], 3. Off [Plays current song & turns off]) */}
         <button
           onClick={toggleRepeat}
-          className={`relative p-2 transition-all duration-300 rounded-full cursor-pointer hover:bg-white/5 ${
+          className={`relative p-2.5 transition-all duration-300 rounded-full cursor-pointer hover:bg-black/10 active:scale-95 ${
             isRepeat !== 'none'
-              ? 'text-purple-400 drop-shadow-[0_0_8px_rgba(168,85,247,0.8)] scale-110'
-              : 'text-white/40 hover:text-white/70'
+              ? 'text-black drop-shadow-[0_0_8px_rgba(0,0,0,0.4)] scale-105'
+              : 'text-black/30 hover:text-black/70'
           }`}
+          title={
+            isRepeat === 'all'
+              ? 'Next song (Always on)'
+              : isRepeat === 'one'
+              ? 'Repeat song (1)'
+              : 'Off (Plays current audio and turns off)'
+          }
+          aria-label={
+            isRepeat === 'all'
+              ? 'Repeat mode: Next song always on'
+              : isRepeat === 'one'
+              ? 'Repeat mode: Repeat current song'
+              : 'Repeat mode: Off'
+          }
         >
           <Repeat className="w-5 h-5" />
           {isRepeat === 'one' && (
-            <span className="absolute -top-1 -right-1 bg-purple-500 text-black font-bold text-[8px] rounded-full w-3.5 h-3.5 flex items-center justify-center border border-black">
+            <span className="absolute -top-0.5 -right-0.5 bg-black text-white font-mono font-bold text-[8.5px] rounded-full w-3.5 h-3.5 flex items-center justify-center border border-white shadow-sm pointer-events-none select-none">
               1
             </span>
           )}
         </button>
       </div>
+
+      {/* Hidden File Input for uploading custom audio tracks */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="audio/*"
+        multiple
+        onChange={handleFileUpload}
+        className="hidden"
+      />
     </div>
   );
 }

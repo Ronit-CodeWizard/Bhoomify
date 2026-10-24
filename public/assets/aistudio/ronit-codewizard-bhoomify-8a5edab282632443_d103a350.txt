@@ -1,0 +1,3251 @@
+Directory structure:
+└── ronit-codewizard-bhoomify/
+    ├── firebase-applet-config.json
+    ├── index.html
+    ├── metadata.json
+    ├── package.json
+    ├── server.ts
+    ├── tsconfig.json
+    ├── vite.config.ts
+    ├── .env.example
+    ├── public/
+    │   └── musicfiles/
+    │       └── .gitkeep
+    └── src/
+        ├── App.tsx
+        ├── index.css
+        ├── main.tsx
+        ├── types.ts
+        ├── components/
+        │   ├── EqualizerScreen.tsx
+        │   ├── MiniPlayer.tsx
+        │   ├── NavigationBar.tsx
+        │   ├── PasswordGate.tsx
+        │   ├── PlaylistScreen.tsx
+        │   ├── ProfileScreen.tsx
+        │   └── VinylPlayer.tsx
+        ├── data/
+        │   └── tracks.ts
+        └── hooks/
+            └── useAudioPlayer.ts
+
+================================================
+FILE: firebase-applet-config.json
+================================================
+{
+  "projectId": "galvanic-tree-62t1j",
+  "appId": "1:822014346283:web:0e28176140f70e9e62566e",
+  "apiKey": "AIzaSyBFKNHfoVv_juzG_jeXX4NmoGu46mZ_NKY",
+  "authDomain": "galvanic-tree-62t1j.firebaseapp.com",
+  "storageBucket": "galvanic-tree-62t1j.firebasestorage.app",
+  "messagingSenderId": "822014346283",
+  "measurementId": "",
+  "oAuthClientId": "822014346283-bdv5ibf1u6i9p7nnk0ndtp6tk3dv8luk.apps.googleusercontent.com",
+  "recaptchaSiteKey": ""
+}
+
+
+================================================
+FILE: index.html
+================================================
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Premium Music Player</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Sora:wght@400;600;700;800&display=swap" rel="stylesheet">
+  </head>
+  <body class="bg-neutral-950 font-sans antialiased text-white selection:bg-purple-500/30 selection:text-purple-200">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+
+
+
+
+================================================
+FILE: metadata.json
+================================================
+{
+  "name": "Premium Music Player",
+  "description": "A premium, fully responsive music player featuring a beautiful glassmorphic UI, a rotating vinyl disc, circular progress seekbar, custom interactive visualizers, local audio streaming, playlist queueing, and smooth transitions.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+
+
+
+================================================
+FILE: package.json
+================================================
+{
+  "name": "react-example",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx server.ts",
+    "build": "vite build && esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs",
+    "start": "node dist/server.cjs",
+    "clean": "rm -rf dist server.js",
+    "lint": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@google/genai": "^2.4.0",
+    "@tailwindcss/vite": "^4.1.14",
+    "@vitejs/plugin-react": "^5.0.4",
+    "dotenv": "^17.2.3",
+    "express": "^4.21.2",
+    "firebase": "^12.16.0",
+    "lucide-react": "^0.546.0",
+    "motion": "^12.23.24",
+    "react": "^19.0.1",
+    "react-dom": "^19.0.1",
+    "vite": "^6.2.3"
+  },
+  "devDependencies": {
+    "@types/node": "^22.14.0",
+    "autoprefixer": "^10.4.21",
+    "esbuild": "^0.25.0",
+    "tailwindcss": "^4.1.14",
+    "tsx": "^4.21.0",
+    "typescript": "~5.8.2",
+    "vite": "^6.2.3",
+    "@types/express": "^4.17.21"
+  }
+}
+
+
+
+================================================
+FILE: server.ts
+================================================
+import express from "express";
+import path from "path";
+import fs from "fs";
+import { createServer as createViteServer } from "vite";
+
+async function startServer() {
+  const app = express();
+  const PORT = 3000;
+
+  // Serve track list dynamically by fetching from Ronit-CodeWizard's GitHub repository
+  app.get("/api/tracks", async (req, res) => {
+    // Robust static fallback representing the exact list from the GitHub repository
+    const fallbackTracks = [
+      {
+        id: "github-0-chahun-main-ya-naa",
+        title: "Chahun Main Ya Naa",
+        artist: "Bhoomika",
+        album: "Aura Sessions",
+        duration: "4:00",
+        durationSec: 240,
+        coverUrl: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?q=80&w=500&auto=format&fit=crop",
+        audioUrl: "https://raw.githubusercontent.com/Ronit-CodeWizard/wizard-resources/main/Musics/BHO/Chahun%20Main%20Ya%20Naa%20-%20BHO.mp3",
+      },
+      {
+        id: "github-1-ishq-mubarak",
+        title: "Ishq Mubarak",
+        artist: "Bhoomika",
+        album: "Aura Sessions",
+        duration: "4:00",
+        durationSec: 240,
+        coverUrl: "https://images.unsplash.com/photo-1498038432885-c6f3f1b912ee?q=80&w=500&auto=format&fit=crop",
+        audioUrl: "https://raw.githubusercontent.com/Ronit-CodeWizard/wizard-resources/main/Musics/BHO/Ishq%20Mubarak%20-%20BHO.mp3",
+      },
+      {
+        id: "github-2-jeena-jeena",
+        title: "Jeena Jeena",
+        artist: "Bhoomika",
+        album: "Aura Sessions",
+        duration: "4:00",
+        durationSec: 240,
+        coverUrl: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?q=80&w=500&auto=format&fit=crop",
+        audioUrl: "https://raw.githubusercontent.com/Ronit-CodeWizard/wizard-resources/main/Musics/BHO/Jeena%20Jeena%20-%20BHO.mp3",
+      },
+      {
+        id: "github-3-nazar-na-lag-jaaye",
+        title: "Nazar Na Lag Jaaye",
+        artist: "Bhoomika",
+        album: "Aura Sessions",
+        duration: "4:00",
+        durationSec: 240,
+        coverUrl: "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?q=80&w=500&auto=format&fit=crop",
+        audioUrl: "https://raw.githubusercontent.com/Ronit-CodeWizard/wizard-resources/main/Musics/BHO/Nazar%20Na%20Lag%20Jaaye%20-%20BHO.mp3",
+      },
+      {
+        id: "github-4-saiyaara",
+        title: "Saiyaara",
+        artist: "Bhoomika",
+        album: "Aura Sessions",
+        duration: "4:00",
+        durationSec: 240,
+        coverUrl: "https://images.unsplash.com/photo-1511379938547-c1f69419868d?q=80&w=500&auto=format&fit=crop",
+        audioUrl: "https://raw.githubusercontent.com/Ronit-CodeWizard/wizard-resources/main/Musics/BHO/Saiyaara%20-%20BHO.mp3",
+      },
+      {
+        id: "github-5-tum-ho-toh",
+        title: "Tum Ho Toh",
+        artist: "Bhoomika",
+        album: "Aura Sessions",
+        duration: "4:00",
+        durationSec: 240,
+        coverUrl: "https://images.unsplash.com/photo-1501386761578-eac5c94b800a?q=80&w=500&auto=format&fit=crop",
+        audioUrl: "https://raw.githubusercontent.com/Ronit-CodeWizard/wizard-resources/main/Musics/BHO/Tum%20Ho%20Toh%20-%20BHO.mp3",
+      },
+    ];
+
+    try {
+      // Fetch dynamic content list from GitHub API
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 4000); // 4 seconds timeout
+
+      const response = await fetch("https://api.github.com/repos/Ronit-CodeWizard/wizard-resources/contents/Musics/BHO", {
+        headers: {
+          "User-Agent": "Aura-Player-App",
+        },
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        throw new Error(`GitHub API responded with status ${response.status}`);
+      }
+
+      const files = await response.json() as any[];
+      if (!Array.isArray(files)) {
+        throw new Error("Invalid response format from GitHub");
+      }
+
+      const audioFiles = files.filter(
+        (f) => f.type === "file" && f.name.toLowerCase().endsWith(".mp3")
+      );
+
+      // Predefined covers to assign
+      const coverImages = [
+        "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?q=80&w=500&auto=format&fit=crop",
+        "https://images.unsplash.com/photo-1498038432885-c6f3f1b912ee?q=80&w=500&auto=format&fit=crop",
+        "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?q=80&w=500&auto=format&fit=crop",
+        "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?q=80&w=500&auto=format&fit=crop",
+        "https://images.unsplash.com/photo-1511379938547-c1f69419868d?q=80&w=500&auto=format&fit=crop",
+        "https://images.unsplash.com/photo-1501386761578-eac5c94b800a?q=80&w=500&auto=format&fit=crop"
+      ];
+
+      const mappedTracks = audioFiles.map((file, index) => {
+        let title = file.name.replace(/\.[^/.]+$/, ""); // Strip extension
+        
+        if (title.includes(" - ")) {
+          title = title.split(" - ")[0];
+        } else if (title.includes("-")) {
+          title = title.split("-")[0];
+        }
+        title = title.trim();
+
+        return {
+          id: `github-${index}-${encodeURIComponent(file.name)}`,
+          title: title || "Untitled Track",
+          artist: "Bhoomika",
+          album: "Aura Sessions",
+          duration: "4:00",
+          durationSec: 240,
+          coverUrl: coverImages[index % coverImages.length],
+          audioUrl: file.download_url || `https://raw.githubusercontent.com/Ronit-CodeWizard/wizard-resources/main/Musics/BHO/${encodeURIComponent(file.name)}`,
+        };
+      });
+
+      if (mappedTracks.length > 0) {
+        return res.json(mappedTracks);
+      }
+      return res.json(fallbackTracks);
+    } catch (err) {
+      console.warn("GitHub fetch failed or rate limited, using premium offline fallback:", err);
+      return res.json(fallbackTracks);
+    }
+  });
+
+  // Vite middleware for development
+  if (process.env.NODE_ENV !== "production") {
+    const vite = await createViteServer({
+      server: { middlewareMode: true },
+      appType: "spa",
+    });
+    app.use(vite.middlewares);
+  } else {
+    const distPath = path.join(process.cwd(), "dist");
+    app.use(express.static(distPath));
+    app.get("*", (req, res) => {
+      res.sendFile(path.join(distPath, "index.html"));
+    });
+  }
+
+  app.listen(PORT, "0.0.0.0", () => {
+    console.log(`Server running on port ${PORT}`);
+  });
+}
+
+startServer();
+
+
+
+================================================
+FILE: tsconfig.json
+================================================
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "experimentalDecorators": true,
+    "useDefineForClassFields": false,
+    "module": "ESNext",
+    "lib": [
+      "ES2022",
+      "DOM",
+      "DOM.Iterable"
+    ],
+    "skipLibCheck": true,
+    "moduleResolution": "bundler",
+    "isolatedModules": true,
+    "moduleDetection": "force",
+    "allowJs": true,
+    "jsx": "react-jsx",
+    "paths": {
+      "@/*": [
+        "./*"
+      ]
+    },
+    "allowImportingTsExtensions": true,
+    "noEmit": true
+  }
+}
+
+
+
+================================================
+FILE: vite.config.ts
+================================================
+import tailwindcss from '@tailwindcss/vite';
+import react from '@vitejs/plugin-react';
+import path from 'path';
+import {defineConfig} from 'vite';
+
+export default defineConfig(() => {
+  return {
+    plugins: [react(), tailwindcss()],
+    resolve: {
+      alias: {
+        '@': path.resolve(__dirname, '.'),
+      },
+    },
+    server: {
+      // HMR is disabled in AI Studio via DISABLE_HMR env var.
+      // Do not modifyâfile watching is disabled to prevent flickering during agent edits.
+      hmr: process.env.DISABLE_HMR !== 'true',
+      // Disable file watching when DISABLE_HMR is true to save CPU during agent edits.
+      watch: process.env.DISABLE_HMR === 'true' ? null : {},
+    },
+  };
+});
+
+
+
+================================================
+FILE: .env.example
+================================================
+# GEMINI_API_KEY: Required for Gemini AI API calls.
+# AI Studio automatically injects this at runtime from user secrets.
+# Users configure this via the Secrets panel in the AI Studio UI.
+GEMINI_API_KEY="MY_GEMINI_API_KEY"
+
+# APP_URL: The URL where this applet is hosted.
+# AI Studio automatically injects this at runtime with the Cloud Run service URL.
+# Used for self-referential links, OAuth callbacks, and API endpoints.
+APP_URL="MY_APP_URL"
+
+
+
+================================================
+FILE: public/musicfiles/.gitkeep
+================================================
+# This directory contains the actual audio files requested by the user:
+# - Chahun Main Ya Naa - BHO.mp3
+# - Ishq Mubarak - BHO.mp3
+# - Jeena Jeena - BHO.mp3
+# - Nazar Na Lag Jaaye - BHO.mp3
+# - Saiyaara - BHO.mp3
+# - Tum Ho Toh - BHO.mp3
+
+
+
+================================================
+FILE: src/App.tsx
+================================================
+import { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
+import { useAudioPlayer } from './hooks/useAudioPlayer';
+import { NavigationBar } from './components/NavigationBar';
+import { VinylPlayer } from './components/VinylPlayer';
+import { PlaylistScreen } from './components/PlaylistScreen';
+import { MiniPlayer } from './components/MiniPlayer';
+import { EqualizerScreen } from './components/EqualizerScreen';
+import { ProfileScreen } from './components/ProfileScreen';
+import { PasswordGate } from './components/PasswordGate';
+import { TabType, Track } from './types';
+import { Sparkles, Compass, Flame, Leaf, VolumeX, Keyboard } from 'lucide-react';
+
+export default function App() {
+  const [isUnlocked, setIsUnlocked] = useState<boolean>(() => {
+    const saved = sessionStorage.getItem('aura_unlocked');
+    const savedTime = sessionStorage.getItem('aura_unlocked_time');
+    if (saved === 'true' && savedTime) {
+      const elapsed = Date.now() - parseInt(savedTime, 10);
+      if (elapsed < 10 * 60 * 1000) {
+        return true;
+      }
+    }
+    sessionStorage.removeItem('aura_unlocked');
+    sessionStorage.removeItem('aura_unlocked_time');
+    return false;
+  });
+
+  const handleUnlock = () => {
+    sessionStorage.setItem('aura_unlocked', 'true');
+    sessionStorage.setItem('aura_unlocked_time', Date.now().toString());
+    setIsUnlocked(true);
+  };
+
+  const player = useAudioPlayer();
+  const {
+    tracks,
+    currentTrack,
+    state,
+    playError,
+    togglePlay,
+    playTrack,
+    next,
+    prev,
+    seek,
+    setVolume,
+    toggleMute,
+    toggleShuffle,
+    toggleRepeat,
+    toggleLike,
+    reorderPlaylist,
+    addToQueue,
+    removeFromQueue,
+  } = player;
+
+  const { isPlaying, currentTime, volume, isMuted } = state;
+
+  const [activeTab, setActiveTab] = useState<TabType>('now-playing');
+  const [rightPanelTab, setRightPanelTab] = useState<TabType>('playlist');
+  const [showShortcutOverlay, setShowShortcutOverlay] = useState(false);
+
+  // Global Keyboard Shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignore shortcuts if the user is typing in search input
+      if (document.activeElement?.tagName === 'INPUT') return;
+
+      switch (e.code) {
+        case 'Space':
+          e.preventDefault();
+          togglePlay();
+          break;
+        case 'ArrowRight':
+          e.preventDefault();
+          seek(currentTime + 5);
+          break;
+        case 'ArrowLeft':
+          e.preventDefault();
+          seek(currentTime - 5);
+          break;
+        case 'ArrowUp':
+          e.preventDefault();
+          setVolume(Math.min(1, volume + 0.1));
+          break;
+        case 'ArrowDown':
+          e.preventDefault();
+          setVolume(Math.max(0, volume - 0.1));
+          break;
+        case 'KeyM':
+          toggleMute();
+          break;
+        case 'KeyN':
+          next();
+          break;
+        case 'KeyP':
+          prev();
+          break;
+        case 'KeyL':
+          toggleLike(currentTrack?.id);
+          break;
+        default:
+          break;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [togglePlay, seek, currentTime, setVolume, volume, toggleMute, next, prev, toggleLike, currentTrack]);
+
+  // Mood filter utility for Home screen
+  const playMood = (moodType: 'chill' | 'energy' | 'focus') => {
+    let targetIndex = 0;
+    if (moodType === 'chill') {
+      // Find Saiyaara or Ishq Mubarak
+      targetIndex = tracks.findIndex((t) => t.id === 'saiyaara' || t.id === 'ishq-mubarak');
+    } else if (moodType === 'energy') {
+      // Find Tum Ho Toh or Nazar Na Lag Jaaye
+      targetIndex = tracks.findIndex((t) => t.id === 'tum-ho-toh' || t.id === 'nazar-na-lag-jaaye');
+    } else if (moodType === 'focus') {
+      // Find Chahun Main Ya Naa or Jeena Jeena
+      targetIndex = tracks.findIndex((t) => t.id === 'chahun-main-ya-naa' || t.id === 'jeena-jeena');
+    }
+    if (targetIndex !== -1) {
+      playTrack(targetIndex);
+    }
+  };
+
+  const renderTabContent = (tab: TabType) => {
+    switch (tab) {
+      case 'home':
+        return (
+          <div id="home-dashboard" className="flex flex-col h-full text-white px-5 pt-6 pb-40 overflow-y-auto custom-scrollbar">
+            <div className="mb-6">
+              <span className="text-[10px] font-bold tracking-widest text-purple-400 uppercase bg-purple-500/10 border border-purple-500/20 px-2.5 py-1 rounded-full">
+                Discovery Hub
+              </span>
+              <h2 className="text-2xl font-bold font-display tracking-tight mt-2.5">
+                Hello, Rohan
+              </h2>
+              <p className="text-xs text-white/40 mt-1">Ready for some modern premium sounds?</p>
+            </div>
+
+            {/* Premium Mood Selectors */}
+            <h3 className="text-xs font-bold text-white/40 uppercase tracking-widest mb-3.5 flex items-center gap-1.5">
+              <Compass className="w-3.5 h-3.5 text-purple-400" />
+              Tune Your Mood
+            </h3>
+            <div className="grid grid-cols-3 gap-2.5 mb-6">
+              <div
+                onClick={() => playMood('chill')}
+                className="bg-gradient-to-br from-violet-900/40 to-black/40 border border-violet-500/10 hover:border-violet-500/30 p-4 rounded-2xl flex flex-col items-center justify-center text-center cursor-pointer transition-all duration-300 group"
+              >
+                <div className="w-9 h-9 rounded-xl bg-violet-500/10 flex items-center justify-center mb-2.5 group-hover:scale-110 transition-transform">
+                  <Leaf className="w-4 h-4 text-violet-400" />
+                </div>
+                <span className="text-xs font-bold text-white">Chill</span>
+                <span className="text-[9px] text-white/40 mt-1">Ambient Beats</span>
+              </div>
+
+              <div
+                onClick={() => playMood('energy')}
+                className="bg-gradient-to-br from-pink-900/40 to-black/40 border border-pink-500/10 hover:border-pink-500/30 p-4 rounded-2xl flex flex-col items-center justify-center text-center cursor-pointer transition-all duration-300 group"
+              >
+                <div className="w-9 h-9 rounded-xl bg-pink-500/10 flex items-center justify-center mb-2.5 group-hover:scale-110 transition-transform">
+                  <Flame className="w-4 h-4 text-pink-400" />
+                </div>
+                <span className="text-xs font-bold text-white">Energy</span>
+                <span className="text-[9px] text-white/40 mt-1">High-Tempo</span>
+              </div>
+
+              <div
+                onClick={() => playMood('focus')}
+                className="bg-gradient-to-br from-cyan-900/40 to-black/40 border border-cyan-500/10 hover:border-cyan-500/30 p-4 rounded-2xl flex flex-col items-center justify-center text-center cursor-pointer transition-all duration-300 group"
+              >
+                <div className="w-9 h-9 rounded-xl bg-cyan-500/10 flex items-center justify-center mb-2.5 group-hover:scale-110 transition-transform">
+                  <Sparkles className="w-4 h-4 text-cyan-400" />
+                </div>
+                <span className="text-xs font-bold text-white">Focus</span>
+                <span className="text-[9px] text-white/40 mt-1">Post-Rock Ambient</span>
+              </div>
+            </div>
+
+            {/* Featured Track Showcase */}
+            {tracks.length > 0 ? (
+              <>
+                <h3 className="text-xs font-bold text-white/40 uppercase tracking-widest mb-3 flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-purple-400" />
+                  Spotlight Sound
+                </h3>
+                <div className="relative bg-gradient-to-r from-purple-950/40 to-pink-950/20 border border-white/5 rounded-2xl p-4 overflow-hidden flex items-center justify-between shadow-lg mb-6">
+                  {/* Light beams */}
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/10 rounded-full blur-2xl" />
+                  <div className="flex items-center gap-3.5 z-10">
+                    <img
+                      src={tracks[0].coverUrl}
+                      alt={tracks[0].title}
+                      className="w-12 h-12 rounded-xl object-cover shadow-md"
+                      referrerPolicy="no-referrer"
+                    />
+                    <div>
+                      <h4 className="text-xs font-bold text-purple-300 uppercase tracking-wider">Featured Hit</h4>
+                      <h3 className="text-sm font-bold text-white mt-0.5">{tracks[0].title}</h3>
+                      <p className="text-[11px] text-white/50 mt-0.5">{tracks[0].artist}</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => playTrack(0)}
+                    className="relative z-10 bg-white hover:bg-white/90 text-black text-[10px] font-bold px-3.5 py-1.5 rounded-xl transition-colors cursor-pointer"
+                  >
+                    Listen
+                  </button>
+                </div>
+              </>
+            ) : (
+              <div className="relative bg-white/5 border border-white/5 rounded-2xl p-5 text-center shadow-lg mb-6">
+                <p className="text-xs text-white/50">
+                  Your music files folder is currently empty. Put some audio files in <code className="bg-white/10 px-1.5 py-0.5 rounded text-purple-300 text-[11px]">/public/musicfiles</code> to scan them automatically.
+                </p>
+              </div>
+            )}
+
+            {/* Helper tips card */}
+            <div className="bg-white/5 border border-white/5 rounded-2xl p-4 text-center">
+              <Keyboard className="w-5 h-5 text-purple-400 mx-auto mb-2" />
+              <h4 className="text-xs font-bold text-white">Pro Tip: Desktop Shortcuts</h4>
+              <p className="text-[11px] text-white/40 mt-1 max-w-[220px] mx-auto">
+                Press <span className="text-purple-300 font-bold bg-black/40 px-1 py-0.5 rounded">Space</span> to toggle play/pause or use arrow keys to control seek and volume.
+              </p>
+            </div>
+          </div>
+        );
+      case 'playlist':
+        return (
+          <PlaylistScreen
+            tracks={tracks}
+            currentTrack={currentTrack}
+            state={state}
+            playTrack={playTrack}
+            togglePlay={togglePlay}
+            reorderPlaylist={reorderPlaylist}
+            toggleLike={toggleLike}
+            addToQueue={addToQueue}
+            removeFromQueue={removeFromQueue}
+          />
+        );
+      case 'equalizer':
+        return <EqualizerScreen state={state} currentTrack={currentTrack} analyserNode={player.analyserNode} />;
+      case 'profile':
+        return (
+          <ProfileScreen
+            state={state}
+            tracks={tracks}
+            playTrack={playTrack}
+            setVolume={setVolume}
+            totalPlays={player.totalPlays}
+            timeStreamedSec={player.timeStreamedSec}
+          />
+        );
+      default:
+        return null;
+    }
+  };
+
+  useEffect(() => {
+    if (!isUnlocked) return;
+
+    const interval = setInterval(() => {
+      const savedTime = sessionStorage.getItem('aura_unlocked_time');
+      if (savedTime) {
+        const elapsed = Date.now() - parseInt(savedTime, 10);
+        if (elapsed >= 10 * 60 * 1000) {
+          // Pause music before locking
+          if (isPlaying) {
+            togglePlay();
+          }
+          setIsUnlocked(false);
+          sessionStorage.removeItem('aura_unlocked');
+          sessionStorage.removeItem('aura_unlocked_time');
+        }
+      } else {
+        setIsUnlocked(false);
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [isUnlocked, isPlaying, togglePlay]);
+
+  if (!isUnlocked) {
+    return <PasswordGate onUnlock={handleUnlock} />;
+  }
+
+  return (
+    <div className="min-h-screen bg-neutral-950 flex flex-col items-center justify-center p-4 relative overflow-hidden font-sans select-none antialiased">
+      {/* Background radial atmosphere color blobs */}
+      <div className="absolute top-[-10%] left-[-10%] w-[60%] h-[60%] rounded-full bg-purple-900/20 blur-[140px] pointer-events-none" />
+      <div className="absolute bottom-[-10%] right-[-10%] w-[60%] h-[60%] rounded-full bg-pink-900/10 blur-[140px] pointer-events-none" />
+      <div className="absolute top-[35%] left-[45%] w-[45%] h-[45%] rounded-full bg-violet-800/10 blur-[120px] pointer-events-none animate-pulse" />
+
+      {/* Keyboard cheat-sheet floating button */}
+      <button
+        onClick={() => setShowShortcutOverlay(!showShortcutOverlay)}
+        className="fixed top-4 right-4 z-50 bg-black/40 border border-white/10 hover:border-white/20 p-2.5 rounded-xl cursor-pointer hover:scale-105 active:scale-95 transition-all text-white/60 hover:text-white flex items-center gap-2 text-xs shadow-md"
+        title="Show Keyboard Shortcuts"
+      >
+        <Keyboard className="w-4 h-4" />
+        <span className="hidden sm:inline font-semibold">Shortcuts</span>
+      </button>
+
+      {/* Main layout container (dual panel on desktop, single mockup panel on mobile) */}
+      <div className="w-full max-w-5xl flex items-center justify-center gap-10 z-10 h-auto">
+        
+        {/* DESKTOP ONLY: Left Side Now Playing Panel (Fixed device) */}
+        <div className="hidden lg:block w-[390px] h-[760px] rounded-[48px] bg-black/60 border border-white/15 shadow-[0_30px_70px_rgba(0,0,0,0.8)] relative overflow-hidden">
+          {/* Glass Gradient Sheet top-half background */}
+          <div className="absolute top-0 left-0 right-0 h-[45%] bg-gradient-to-b from-purple-900/35 via-pink-900/10 to-transparent pointer-events-none" />
+
+          {/* Core Player Content */}
+          <VinylPlayer
+            currentTrack={currentTrack}
+            tracks={tracks}
+            state={state}
+            playError={playError}
+            togglePlay={togglePlay}
+            next={next}
+            prev={prev}
+            seek={seek}
+            toggleShuffle={toggleShuffle}
+            toggleRepeat={toggleRepeat}
+            toggleLike={toggleLike}
+            playTrack={playTrack}
+            onOpenMenu={() => setRightPanelTab('profile')}
+          />
+
+          {/* Navigation bar fixed on left panel */}
+          <NavigationBar
+            activeTab="now-playing"
+            setActiveTab={(tab) => {
+              if (tab !== 'now-playing') {
+                setRightPanelTab(tab);
+              }
+            }}
+            currentTrack={currentTrack}
+            isPlaying={isPlaying}
+          />
+        </div>
+
+        {/* DESKTOP ONLY: Right Side Dashboard Tabs Panel (Fixed device) */}
+        <div className="hidden lg:block w-[390px] h-[760px] rounded-[48px] bg-black/60 border border-white/15 shadow-[0_30px_70px_rgba(0,0,0,0.8)] relative overflow-hidden">
+          {/* Glass Gradient Sheet top-half background */}
+          <div className="absolute top-0 left-0 right-0 h-[40%] bg-gradient-to-b from-purple-950/20 via-neutral-950/10 to-transparent pointer-events-none" />
+
+          {/* Right Panel View Switching */}
+          <div className="h-full relative overflow-hidden">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={rightPanelTab}
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.25 }}
+                className="h-full"
+              >
+                {renderTabContent(rightPanelTab)}
+              </motion.div>
+            </AnimatePresence>
+
+            {/* Sync floating mini player on right device screen if playing and NOT on playlist */}
+            {rightPanelTab !== 'playlist' && isPlaying && (
+              <MiniPlayer
+                currentTrack={currentTrack}
+                state={state}
+                togglePlay={togglePlay}
+                next={next}
+                onExpand={() => setRightPanelTab('playlist')}
+              />
+            )}
+
+            {/* Navigation tabs row */}
+            <NavigationBar
+              activeTab={rightPanelTab}
+              setActiveTab={(tab) => {
+                if (tab === 'now-playing') {
+                  // Scroll action or ignore
+                } else {
+                  setRightPanelTab(tab);
+                }
+              }}
+              currentTrack={currentTrack}
+              isPlaying={isPlaying}
+            />
+          </div>
+        </div>
+
+        {/* RESPONSIVE MOBILE VIEWPORT (Single Device Frame) */}
+        <div className="block lg:hidden w-full max-w-[390px] h-[760px] rounded-[48px] bg-black/60 border border-white/15 shadow-[0_25px_60px_rgba(0,0,0,0.8)] relative overflow-hidden">
+          {/* Glass Gradient background */}
+          <div className="absolute top-0 left-0 right-0 h-[45%] bg-gradient-to-b from-purple-900/30 via-neutral-950/10 to-transparent pointer-events-none" />
+
+          {/* Active View content */}
+          <div className="h-full relative">
+            <AnimatePresence mode="wait">
+              {activeTab === 'now-playing' ? (
+                <motion.div
+                  key="now-playing-tab"
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  transition={{ duration: 0.25 }}
+                  className="h-full"
+                >
+                  <VinylPlayer
+                    currentTrack={currentTrack}
+                    tracks={tracks}
+                    state={state}
+                    playError={playError}
+                    togglePlay={togglePlay}
+                    next={next}
+                    prev={prev}
+                    seek={seek}
+                    toggleShuffle={toggleShuffle}
+                    toggleRepeat={toggleRepeat}
+                    toggleLike={toggleLike}
+                    playTrack={playTrack}
+                    onOpenMenu={() => setActiveTab('profile')}
+                  />
+                </motion.div>
+              ) : (
+                <motion.div
+                  key={`${activeTab}-tab`}
+                  initial={{ opacity: 0, y: 30 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -30 }}
+                  transition={{ duration: 0.25 }}
+                  className="h-full"
+                >
+                  {renderTabContent(activeTab)}
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Floating Mini Player (only when NOT on 'now-playing' screen) */}
+            {activeTab !== 'now-playing' && (
+              <MiniPlayer
+                currentTrack={currentTrack}
+                state={state}
+                togglePlay={togglePlay}
+                next={next}
+                onExpand={() => setActiveTab('now-playing')}
+              />
+            )}
+
+            {/* Navigation tab bar */}
+            <NavigationBar
+              activeTab={activeTab}
+              setActiveTab={setActiveTab}
+              currentTrack={currentTrack}
+              isPlaying={isPlaying}
+            />
+          </div>
+        </div>
+
+      </div>
+
+      {/* Muted indicator overlay if muted */}
+      {isMuted && (
+        <div className="fixed bottom-4 left-4 z-40 bg-purple-500/20 border border-purple-500/40 px-3.5 py-1.5 rounded-full flex items-center gap-1.5 text-xs text-purple-300 drop-shadow-[0_0_8px_rgba(168,85,247,0.3)]">
+          <VolumeX className="w-3.5 h-3.5 animate-bounce" />
+          <span>Muted</span>
+        </div>
+      )}
+
+      {/* Floating Keyboard Shortcuts Cheat Sheet Modal */}
+      <AnimatePresence>
+        {showShortcutOverlay && (
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-[#0b0a0f] border border-white/10 rounded-3xl p-6 max-w-sm w-full shadow-2xl relative"
+            >
+              <h3 className="text-lg font-bold font-display text-white mb-1">Keyboard Shortcuts</h3>
+              <p className="text-xs text-white/40 mb-4">Master control commands for Aura Player</p>
+              
+              <div className="space-y-2.5 mb-6">
+                {shortcuts.map((sh, idx) => (
+                  <div key={idx} className="flex items-center justify-between text-xs py-1.5 border-b border-white/5 last:border-none">
+                    <span className="text-white/60">{sh.desc}</span>
+                    <span className="px-2.5 py-1 bg-black border border-white/10 text-[10px] font-bold rounded-lg text-purple-300 tracking-wider">
+                      {sh.key}
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              <button
+                onClick={() => setShowShortcutOverlay(false)}
+                className="w-full bg-purple-500 hover:bg-purple-600 active:scale-95 text-black font-bold text-xs py-3 rounded-2xl transition-all cursor-pointer shadow-[0_4px_12px_rgba(168,85,247,0.3)]"
+              >
+                Close Panel
+              </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+const shortcuts = [
+  { key: 'Space', desc: 'Play / Pause track' },
+  { key: '→', desc: 'Skip forward 5 seconds' },
+  { key: '←', desc: 'Rewind back 5 seconds' },
+  { key: '↑', desc: 'Increase master volume' },
+  { key: '↓', desc: 'Decrease master volume' },
+  { key: 'M', desc: 'Toggle instant mute state' },
+  { key: 'N', desc: 'Skip track' },
+  { key: 'P', desc: 'Previous track' },
+  { key: 'L', desc: 'Like / Favourite track' },
+];
+
+
+
+================================================
+FILE: src/index.css
+================================================
+@import "tailwindcss";
+
+@theme {
+  --font-sans: 'Outfit', sans-serif;
+  --font-display: 'Sora', sans-serif;
+}
+
+/* Glassmorphism Preset class */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(30px) saturate(120%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Smooth custom-scrollbar */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 5px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 99px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+/* Base custom resets */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+}
+input[type="range"]::-webkit-slider-runnable-track {
+  background: rgba(255, 255, 255, 0.1);
+  height: 4px;
+  border-radius: 99px;
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  background: #a855f7;
+  width: 12px;
+  height: 12px;
+  border-radius: 99px;
+  margin-top: -4px;
+  box-shadow: 0 0 8px rgba(168, 85, 247, 0.6);
+  transition: transform 0.2s;
+}
+input[type="range"]::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+}
+
+
+
+================================================
+FILE: src/main.tsx
+================================================
+import {StrictMode} from 'react';
+import {createRoot} from 'react-dom/client';
+import App from './App.tsx';
+import './index.css';
+
+createRoot(document.getElementById('root')!).render(
+  <StrictMode>
+    <App />
+  </StrictMode>,
+);
+
+
+
+================================================
+FILE: src/types.ts
+================================================
+export interface Track {
+  id: string;
+  title: string;
+  artist: string;
+  album: string;
+  duration: string; // MM:SS formatted string
+  durationSec: number; // Duration in seconds
+  coverUrl: string;
+  audioUrl: string;
+  googleDriveFileId?: string;
+  blobUrl?: string;
+}
+
+export type TabType = 'home' | 'playlist' | 'now-playing' | 'equalizer' | 'profile';
+
+export interface PlayerState {
+  isPlaying: boolean;
+  currentTime: number;
+  duration: number;
+  volume: number;
+  isMuted: boolean;
+  isShuffle: boolean;
+  isRepeat: 'none' | 'all' | 'one';
+  currentTrackIndex: number;
+  likedTrackIds: string[];
+  queue: string[]; // List of track IDs
+}
+
+
+
+================================================
+FILE: src/components/EqualizerScreen.tsx
+================================================
+import { useEffect, useRef, useState } from 'react';
+import { motion } from 'motion/react';
+import { Sparkles, Sliders, Play, Volume2 } from 'lucide-react';
+import { PlayerState, Track } from '../types';
+
+interface EqualizerScreenProps {
+  state: PlayerState;
+  currentTrack: Track;
+  analyserNode: AnalyserNode | null;
+}
+
+type VisualizerStyle = 'bars' | 'wave' | 'radial';
+type EqPreset = 'Flat' | 'Bass Boost' | 'Electronic' | 'Acoustic' | 'Vocal';
+
+export function EqualizerScreen({ state, currentTrack, analyserNode }: EqualizerScreenProps) {
+  const { isPlaying, volume } = state;
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const [style, setStyle] = useState<VisualizerStyle>('bars');
+  const [preset, setPreset] = useState<EqPreset>('Bass Boost');
+
+  // Animation frame reference
+  const animationRef = useRef<number | null>(null);
+
+  // Equalizer presets scaling factors for visualizer
+  const getPresetMultiplier = (freqIndex: number, totalBands: number) => {
+    switch (preset) {
+      case 'Bass Boost':
+        // Boost low frequencies (left side)
+        return freqIndex < totalBands * 0.25 ? 1.6 : 0.8;
+      case 'Electronic':
+        // Boost low and high, scoop mid
+        if (freqIndex < totalBands * 0.2 || freqIndex > totalBands * 0.8) return 1.4;
+        return 0.7;
+      case 'Acoustic':
+        // Smooth mid boost
+        const midPoint = totalBands / 2;
+        const distFromMid = Math.abs(freqIndex - midPoint) / midPoint;
+        return 1.4 - distFromMid * 0.8;
+      case 'Vocal':
+        // Boost high-mids
+        if (freqIndex > totalBands * 0.4 && freqIndex < totalBands * 0.7) return 1.5;
+        return 0.6;
+      case 'Flat':
+      default:
+        return 1.0;
+    }
+  };
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    // Handle high DPI displays
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    ctx.scale(dpr, dpr);
+
+    const width = rect.width;
+    const height = rect.height;
+
+    // Simulate 40 frequency bands
+    const bandCount = style === 'bars' ? 32 : 64;
+    const frequencies = new Array(bandCount).fill(0);
+    const targetFrequencies = new Array(bandCount).fill(0);
+    
+    // Wave variables
+    let phase = 0;
+
+    const render = () => {
+      ctx.clearRect(0, 0, width, height);
+
+      // Smooth interpolation values
+      const smoothFactor = 0.15;
+
+      // Update frequency bands
+      let dataArray: Uint8Array | null = null;
+      let bufferLength = 0;
+      if (analyserNode && isPlaying) {
+        bufferLength = analyserNode.frequencyBinCount;
+        dataArray = new Uint8Array(bufferLength);
+        analyserNode.getByteFrequencyData(dataArray);
+      }
+
+      for (let i = 0; i < bandCount; i++) {
+        if (dataArray) {
+          // Map to LOWER 80% of frequency spectrum where actual audible music resides (avoiding high-freq static)
+          const percent = i / bandCount;
+          const dataIndex = Math.floor(percent * bufferLength * 0.85);
+          const rawValue = dataArray[dataIndex] || 0;
+
+          const amplitudeMultiplier = getPresetMultiplier(i, bandCount);
+          // Scale from [0, 255] to canvas height
+          let targetVal = (rawValue / 255) * height * 0.85 * volume * amplitudeMultiplier;
+          targetVal = Math.max(4, targetVal); // Keep small active baseline
+          targetFrequencies[i] = targetVal;
+        } else if (isPlaying) {
+          // Generate realistic floating noise based on time, index, and volume
+          const noiseFreq = 0.05 + (i * 0.02);
+          const time = Date.now() * 0.005;
+          const amplitudeMultiplier = getPresetMultiplier(i, bandCount);
+          
+          // Realistic audio wave simulation with octave noise
+          const baseNoise = Math.sin(time * 0.8 + i * 0.3) * 0.3 + 0.4;
+          const details = Math.sin(time * 2.3 + i * 0.9) * 0.15;
+          const bassPunch = i < bandCount * 0.2 && Math.sin(time * 4) > 0.8 ? 0.3 : 0;
+
+          let targetVal = (baseNoise + details + bassPunch) * height * 0.65 * volume * amplitudeMultiplier;
+          targetVal = Math.max(4, targetVal); // Keep a small active baseline
+          targetFrequencies[i] = targetVal;
+        } else {
+          // Flatten when paused
+          targetFrequencies[i] = 4 + Math.sin(Date.now() * 0.001 + i * 0.5) * 2;
+        }
+
+        // Lerp to target
+        frequencies[i] += (targetFrequencies[i] - frequencies[i]) * smoothFactor;
+      }
+
+      phase += isPlaying ? 0.08 : 0.02;
+
+      // Render Styles
+      if (style === 'bars') {
+        const barWidth = width / bandCount;
+        const gap = 2.5;
+
+        for (let i = 0; i < bandCount; i++) {
+          const barHeight = frequencies[i];
+          const x = i * barWidth;
+          const y = height - barHeight - 10;
+
+          // Multi-stop neon gradient: Purple -> Pink -> Cyan
+          const gradient = ctx.createLinearGradient(x, height, x, y);
+          gradient.addColorStop(0, 'rgba(168, 85, 247, 0.2)'); // Violet/Purple
+          gradient.addColorStop(0.5, 'rgba(236, 72, 153, 0.85)'); // Hot Pink
+          gradient.addColorStop(1, 'rgba(0, 229, 255, 1)'); // Electric Cyan
+
+          ctx.fillStyle = gradient;
+          
+          // Draw rounded bar top manually to be ultra premium
+          ctx.beginPath();
+          const r = Math.min(barWidth / 2 - gap / 2, 4);
+          const w = barWidth - gap;
+          ctx.roundRect(x + gap / 2, y, w, barHeight, [r, r, 0, 0]);
+          ctx.fill();
+
+          // Mirror top dots
+          if (isPlaying && i % 2 === 0) {
+            ctx.fillStyle = 'rgba(0, 229, 255, 0.6)';
+            ctx.beginPath();
+            ctx.arc(x + barWidth / 2, y - 6, 1.5, 0, 2 * Math.PI);
+            ctx.fill();
+          }
+        }
+      } else if (style === 'wave') {
+        // High-fidelity smooth sine oscilloscopes (multiple overlapping transparent curves)
+        const layers = 3;
+        for (let l = 0; l < layers; l++) {
+          ctx.beginPath();
+          ctx.lineWidth = l === 0 ? 3.5 : 1.5;
+          
+          // Shift opacity and colors for each layer
+          if (l === 0) ctx.strokeStyle = 'rgba(0, 229, 255, 0.95)'; // Cyan
+          else if (l === 1) ctx.strokeStyle = 'rgba(236, 72, 153, 0.6)'; // Pink
+          else ctx.strokeStyle = 'rgba(168, 85, 247, 0.4)'; // Purple
+
+          const speedMultiplier = (l + 1) * 0.4;
+          const amplitudeFactor = (3 - l) * 0.35;
+
+          ctx.moveTo(0, height / 2);
+
+          for (let x = 0; x < width; x += 5) {
+            // Sample frequency visual state to deform the wave dynamically where the beat is active
+            const freqIndex = Math.floor((x / width) * bandCount);
+            const freqVal = frequencies[freqIndex] || 10;
+            
+            const sinY = Math.sin(x * 0.015 - phase * speedMultiplier) * freqVal * amplitudeFactor;
+            const cosY = Math.cos(x * 0.008 + phase * speedMultiplier * 0.5) * 15;
+            
+            ctx.lineTo(x, height / 2 + sinY + cosY);
+          }
+
+          ctx.stroke();
+        }
+
+        // Render ambient floating nodes
+        if (isPlaying) {
+          ctx.fillStyle = 'rgba(236, 72, 153, 0.2)';
+          for (let i = 0; i < 5; i++) {
+            const nodeX = (width / 6) * (i + 1) + Math.sin(phase + i) * 15;
+            const nodeY = height / 2 + Math.cos(phase * 1.2 + i) * 40;
+            ctx.beginPath();
+            ctx.arc(nodeX, nodeY, 4 + i, 0, 2 * Math.PI);
+            ctx.fill();
+          }
+        }
+      } else if (style === 'radial') {
+        // Radial pulsating ring visualizer
+        const centerX = width / 2;
+        const centerY = height / 2;
+        const baseRadius = 65;
+
+        // Draw multiple rings representing frequencies
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, baseRadius, 0, 2 * Math.PI);
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+
+        // Pulsating glowing core
+        const pulseAmt = isPlaying ? frequencies[4] * 0.2 : 5;
+        const radialGradient = ctx.createRadialGradient(centerX, centerY, 5, centerX, centerY, baseRadius + pulseAmt);
+        radialGradient.addColorStop(0, 'rgba(168, 85, 247, 0.35)');
+        radialGradient.addColorStop(0.5, 'rgba(236, 72, 153, 0.1)');
+        radialGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        
+        ctx.fillStyle = radialGradient;
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, baseRadius + pulseAmt, 0, 2 * Math.PI);
+        ctx.fill();
+
+        // Draw radial spikes
+        const spikes = 60;
+        for (let i = 0; i < spikes; i++) {
+          const angle = (i / spikes) * Math.PI * 2 + phase * 0.15;
+          const freqIndex = Math.floor((i / spikes) * bandCount);
+          const val = frequencies[freqIndex] * 0.65;
+
+          const startX = centerX + Math.cos(angle) * baseRadius;
+          const startY = centerY + Math.sin(angle) * baseRadius;
+          const endX = centerX + Math.cos(angle) * (baseRadius + val);
+          const endY = centerY + Math.sin(angle) * (baseRadius + val);
+
+          const gradient = ctx.createLinearGradient(startX, startY, endX, endY);
+          gradient.addColorStop(0, 'rgba(236, 72, 153, 0.6)');
+          gradient.addColorStop(1, 'rgba(0, 229, 255, 1)');
+
+          ctx.strokeStyle = gradient;
+          ctx.lineWidth = 2.5;
+          ctx.beginPath();
+          ctx.moveTo(startX, startY);
+          ctx.lineTo(endX, endY);
+          ctx.stroke();
+        }
+      }
+
+      animationRef.current = requestAnimationFrame(render);
+    };
+
+    render();
+
+    return () => {
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+      }
+    };
+  }, [style, preset, isPlaying, volume, analyserNode]);
+
+  return (
+    <div id="equalizer-screen" className="flex flex-col h-full text-white px-5 pt-6 pb-40">
+      {/* Equalizer Title */}
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <h2 className="text-xl font-bold font-display tracking-tight text-white/90">Acoustic Spectrum</h2>
+          <p className="text-xs text-white/40 mt-1">Real-time spectral visualization</p>
+        </div>
+        <div className="flex gap-1.5 bg-white/5 p-1 rounded-xl border border-white/5">
+          {(['bars', 'wave', 'radial'] as VisualizerStyle[]).map((vStyle) => (
+            <button
+              key={vStyle}
+              onClick={() => setStyle(vStyle)}
+              className={`text-xs px-2.5 py-1.5 font-bold uppercase tracking-wider rounded-lg transition-all cursor-pointer ${
+                style === vStyle
+                  ? 'bg-purple-500/25 text-purple-300 border border-purple-500/20'
+                  : 'text-white/40 hover:text-white/70 hover:bg-white/5'
+              }`}
+            >
+              {vStyle}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Canvas Window Container */}
+      <div className="relative flex-1 bg-black/35 backdrop-blur-xl border border-white/5 rounded-3xl overflow-hidden shadow-inner flex items-center justify-center p-2 mb-4">
+        {/* Track Title Watermark overlay */}
+        <div className="absolute top-4 left-4 flex items-center gap-2.5 text-white/30 z-15 bg-black/20 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/5">
+          <Volume2 className="w-3.5 h-3.5" />
+          <span className="text-[10px] font-bold tracking-widest uppercase">
+            {isPlaying ? `Playing: ${currentTrack?.title}` : 'Spectral Idle'}
+          </span>
+        </div>
+
+        <canvas ref={canvasRef} className="w-full h-full block" />
+      </div>
+
+      {/* Presets Grid */}
+      <div className="bg-white/5 border border-white/5 rounded-2xl p-4">
+        <h3 className="text-xs font-bold text-white/50 uppercase tracking-widest mb-3 flex items-center gap-1.5">
+          <Sliders className="w-3.5 h-3.5 text-purple-400" />
+          DSP Equalizer Presets
+        </h3>
+        <div className="grid grid-cols-5 gap-2">
+          {(['Flat', 'Bass Boost', 'Electronic', 'Acoustic', 'Vocal'] as EqPreset[]).map((p) => (
+            <button
+              key={p}
+              onClick={() => setPreset(p)}
+              className={`text-[10px] py-2.5 font-bold rounded-xl transition-all cursor-pointer ${
+                preset === p
+                  ? 'bg-purple-500 text-black shadow-[0_4px_12px_rgba(168,85,247,0.4)]'
+                  : 'bg-white/5 hover:bg-white/10 text-white/60 hover:text-white'
+              }`}
+            >
+              {p}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+
+================================================
+FILE: src/components/MiniPlayer.tsx
+================================================
+import { motion } from 'motion/react';
+import { Play, Pause, SkipForward, Maximize2 } from 'lucide-react';
+import { Track, PlayerState } from '../types';
+
+interface MiniPlayerProps {
+  currentTrack: Track;
+  state: PlayerState;
+  togglePlay: () => void;
+  next: () => void;
+  onExpand: () => void;
+}
+
+export function MiniPlayer({
+  currentTrack,
+  state,
+  togglePlay,
+  next,
+  onExpand,
+}: MiniPlayerProps) {
+  if (!currentTrack) return null;
+  const { isPlaying, currentTime, duration } = state;
+
+  const progressPercentage = duration > 0 ? (currentTime / duration) * 100 : 0;
+
+  return (
+    <motion.div
+      initial={{ y: 80, opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      exit={{ y: 80, opacity: 0 }}
+      transition={{ type: 'spring', stiffness: 350, damping: 30 }}
+      className="absolute bottom-24 left-1/2 -translate-x-1/2 w-[calc(100%-40px)] max-w-[360px] bg-black/40 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-[0_15px_30px_rgba(0,0,0,0.6)] overflow-hidden z-30 group"
+    >
+      {/* Sleek Progress Bar Indicator on top edge */}
+      <div className="absolute top-0 left-0 right-0 h-0.5 bg-white/5">
+        <div
+          className="h-full bg-cyan-400 drop-shadow-[0_0_4px_rgba(0,229,255,0.7)] transition-all duration-300"
+          style={{ width: `${progressPercentage}%` }}
+        />
+      </div>
+
+      <div className="flex items-center justify-between p-3">
+        {/* Click to expand area */}
+        <div
+          onClick={onExpand}
+          className="flex items-center flex-1 min-w-0 cursor-pointer"
+        >
+          {/* Cover Art thumbnail */}
+          <div className="relative w-11 h-11 rounded-lg overflow-hidden flex-shrink-0 shadow-md">
+            <motion.img
+              animate={{ rotate: isPlaying ? 360 : 0 }}
+              transition={{
+                rotate: { repeat: Infinity, duration: 10, ease: 'linear' },
+              }}
+              src={currentTrack?.coverUrl}
+              alt={currentTrack?.title}
+              className="w-full h-full object-cover"
+              referrerPolicy="no-referrer"
+            />
+            <div className="absolute inset-0 rounded-full border border-black/10 pointer-events-none" />
+          </div>
+
+          {/* Title & Artist info */}
+          <div className="ml-3 flex-1 min-w-0 pr-2">
+            <h4 className="text-xs font-bold text-white truncate">{currentTrack?.title}</h4>
+            <p className="text-[10px] text-white/50 truncate mt-0.5">{currentTrack?.artist}</p>
+          </div>
+        </div>
+
+        {/* Media Controls for MiniPlayer */}
+        <div className="flex items-center gap-1.5 ml-1">
+          {/* Play / Pause Toggle */}
+          <button
+            onClick={togglePlay}
+            className="p-2 text-white hover:text-purple-400 hover:bg-white/5 active:scale-90 transition-all rounded-full cursor-pointer"
+          >
+            {isPlaying ? (
+              <Pause className="w-4 h-4 fill-current" />
+            ) : (
+              <Play className="w-4 h-4 fill-current ml-0.5" />
+            )}
+          </button>
+
+          {/* Skip Track */}
+          <button
+            onClick={next}
+            className="p-2 text-white/60 hover:text-white hover:bg-white/5 active:scale-90 transition-all rounded-full cursor-pointer"
+          >
+            <SkipForward className="w-4 h-4 fill-current" />
+          </button>
+
+          {/* Maximize Icon */}
+          <button
+            onClick={onExpand}
+            className="p-2 text-white/40 hover:text-white group-hover:text-white/70 hover:bg-white/5 active:scale-90 transition-all rounded-full cursor-pointer"
+          >
+            <Maximize2 className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+
+
+================================================
+FILE: src/components/NavigationBar.tsx
+================================================
+import { motion } from 'motion/react';
+import { Home, ListMusic, Bell, Sparkles } from 'lucide-react';
+import { TabType, Track } from '../types';
+
+interface NavigationBarProps {
+  activeTab: TabType;
+  setActiveTab: (tab: TabType) => void;
+  currentTrack: Track;
+  isPlaying: boolean;
+}
+
+export function NavigationBar({
+  activeTab,
+  setActiveTab,
+  currentTrack,
+  isPlaying,
+}: NavigationBarProps) {
+  const tabs = [
+    { id: 'home' as TabType, icon: Home, label: 'Home' },
+    { id: 'playlist' as TabType, icon: ListMusic, label: 'Playlist' },
+    { id: 'now-playing' as TabType, isCenter: true },
+    { id: 'equalizer' as TabType, icon: Sparkles, label: 'Visualizer' },
+    { id: 'profile' as TabType, icon: Bell, label: 'Activity' },
+  ];
+
+  return (
+    <div className="absolute bottom-6 left-1/2 -translate-x-1/2 w-[calc(100%-40px)] max-w-[360px] z-40">
+      <div 
+        id="navbar-capsule"
+        className="relative bg-black/40 backdrop-blur-2xl border border-white/10 rounded-[32px] px-5 py-3 flex items-center justify-between shadow-[0_20px_50px_rgba(0,0,0,0.8)] overflow-hidden"
+      >
+        {tabs.map((tab, idx) => {
+          if (tab.isCenter) {
+            const isActive = activeTab === 'now-playing';
+            return (
+              <button
+                key={tab.id}
+                id={`nav-btn-${tab.id}`}
+                onClick={() => setActiveTab('now-playing')}
+                className="relative flex items-center justify-center w-12 h-12 focus:outline-none group cursor-pointer"
+              >
+                {/* 3D Glowing Orb representing current track cover */}
+                <div className="absolute inset-0 bg-purple-500/20 rounded-full blur-md opacity-0 group-hover:opacity-100 transition-opacity" />
+                
+                <motion.div
+                  animate={{
+                    rotate: isPlaying ? 360 : 0,
+                    scale: isActive ? 1.15 : 1,
+                  }}
+                  transition={{
+                    rotate: { repeat: Infinity, duration: 8, ease: 'linear' },
+                    scale: { type: 'spring', stiffness: 300, damping: 20 },
+                  }}
+                  className={`w-10 h-10 rounded-full overflow-hidden border-2 cursor-pointer shadow-[0_0_15px_rgba(168,85,247,0.4)] ${
+                    isActive ? 'border-purple-400 scale-110' : 'border-white/20'
+                  }`}
+                >
+                  <img
+                    src={currentTrack?.coverUrl}
+                    alt={currentTrack?.title}
+                    className="w-full h-full object-cover"
+                    referrerPolicy="no-referrer"
+                  />
+                </motion.div>
+
+                {/* Glowing Purple light underneath the center button if active */}
+                {isActive && (
+                  <motion.div
+                    layoutId="nav-glow"
+                    className="absolute -bottom-4 w-12 h-5 bg-purple-500/70 rounded-full blur-md -z-10"
+                    transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                  />
+                )}
+              </button>
+            );
+          }
+
+          const IconComponent = tab.icon!;
+          const isActive = activeTab === tab.id;
+
+          return (
+            <button
+              key={tab.id}
+              id={`nav-btn-${tab.id}`}
+              onClick={() => setActiveTab(tab.id)}
+              className="relative flex flex-col items-center justify-center p-3 focus:outline-none group cursor-pointer"
+            >
+              <IconComponent
+                className={`w-5 h-5 transition-all duration-300 ${
+                  isActive
+                    ? 'text-purple-400 drop-shadow-[0_0_8px_rgba(168,85,247,0.8)] scale-110'
+                    : 'text-white/40 group-hover:text-white/70'
+                }`}
+              />
+
+              {/* Glowing Indicator Line or Dot beneath the active item */}
+              {isActive && (
+                <motion.div
+                  layoutId="nav-glow"
+                  className="absolute -bottom-3 w-8 h-4 bg-purple-500/60 rounded-full blur-md -z-10"
+                  transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                />
+              )}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+
+
+================================================
+FILE: src/components/PasswordGate.tsx
+================================================
+import React, { useState, useRef, useEffect } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
+import { Lock, Unlock, KeyRound, AlertCircle, Eye, EyeOff } from 'lucide-react';
+
+interface PasswordGateProps {
+  onUnlock: () => void;
+}
+
+export function PasswordGate({ onUnlock }: PasswordGateProps) {
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [isUnlocking, setIsUnlocking] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    // Auto focus the password input field on awake
+    if (inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, []);
+
+  const handleSubmit = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (password === 'RB143') {
+      setIsUnlocking(true);
+      setError(false);
+      // Beautiful exit animation delay
+      setTimeout(() => {
+        onUnlock();
+      }, 500);
+    } else {
+      setError(true);
+      setPassword('');
+      // Vibrate if mobile supported
+      if (navigator.vibrate) navigator.vibrate(100);
+      // Refocus input
+      setTimeout(() => {
+        if (inputRef.current) inputRef.current.focus();
+      }, 100);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-[#06040a] z-[9999] flex items-center justify-center p-6 select-none overflow-hidden font-sans">
+      {/* Dynamic backdrop glow circles */}
+      <div className="absolute top-1/4 left-1/4 w-[300px] h-[300px] rounded-full bg-purple-600/10 blur-[120px] pointer-events-none animate-pulse" />
+      <div className="absolute bottom-1/4 right-1/4 w-[300px] h-[300px] rounded-full bg-pink-600/10 blur-[120px] pointer-events-none animate-pulse [animation-delay:1.5s]" />
+
+      <motion.div
+        initial={{ opacity: 0, y: 20, scale: 0.95 }}
+        animate={isUnlocking ? { opacity: 0, scale: 1.05, y: -20 } : { opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+        className="w-full max-w-md relative z-10"
+      >
+        {/* Outer subtle glow ring around card */}
+        <div className="absolute inset-0 bg-gradient-to-b from-purple-500/10 to-transparent rounded-[32px] blur-xl opacity-50" />
+
+        <div className="bg-black/40 backdrop-blur-3xl border border-white/10 rounded-[32px] p-8 md:p-10 shadow-[0_30px_80px_rgba(0,0,0,0.9)] flex flex-col items-center text-center">
+          
+          {/* Animated Lock Badge */}
+          <div className="relative mb-6">
+            <motion.div
+              animate={error ? { x: [-6, 6, -4, 4, -2, 2, 0] } : {}}
+              transition={{ duration: 0.4 }}
+              className={`w-16 h-16 rounded-2xl flex items-center justify-center transition-all duration-300 ${
+                error
+                  ? 'bg-red-500/15 border border-red-500/30 text-red-400 shadow-[0_0_15px_rgba(239,68,68,0.2)]'
+                  : isUnlocking
+                  ? 'bg-green-500/15 border border-green-500/30 text-green-400 shadow-[0_0_15px_rgba(34,197,94,0.2)] animate-pulse'
+                  : 'bg-purple-500/10 border border-purple-500/20 text-purple-400'
+              }`}
+            >
+              {isUnlocking ? (
+                <Unlock className="w-7 h-7" />
+              ) : (
+                <Lock className="w-7 h-7" />
+              )}
+            </motion.div>
+          </div>
+
+          <h1 className="text-2xl font-bold font-display tracking-tight text-white mb-2">
+            Aura Sessions
+          </h1>
+          <p className="text-xs text-white/50 max-w-xs leading-relaxed mb-8">
+            This premium audio console is password-protected. Please enter your authorization key to awaken the system.
+          </p>
+
+          <form onSubmit={handleSubmit} className="w-full space-y-4">
+            <div className="relative">
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30">
+                <KeyRound className="w-4 h-4" />
+              </span>
+              <input
+                ref={inputRef}
+                type={showPassword ? 'text' : 'password'}
+                placeholder="Enter Authorization Password"
+                value={password}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  if (error) setError(false);
+                }}
+                className={`w-full bg-white/[0.04] border hover:bg-white/[0.06] focus:bg-black/40 text-sm py-3.5 pl-11 pr-12 rounded-2xl text-white placeholder-white/20 focus:outline-none transition-all duration-300 font-sans tracking-wide text-center ${
+                  error
+                    ? 'border-red-500/50 focus:border-red-500 shadow-[0_0_15px_rgba(239,68,68,0.1)]'
+                    : 'border-white/10 focus:border-purple-500/50 focus:shadow-[0_0_20px_rgba(168,85,247,0.15)]'
+                }`}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 cursor-pointer p-0.5"
+                title={showPassword ? 'Hide password' : 'Show password'}
+              >
+                {showPassword ? (
+                  <EyeOff className="w-4 h-4" />
+                ) : (
+                  <Eye className="w-4 h-4" />
+                )}
+              </button>
+            </div>
+
+            <AnimatePresence>
+              {error && (
+                <motion.div
+                  initial={{ opacity: 0, y: -8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  className="flex items-center justify-center gap-1.5 text-xs text-red-400 font-semibold bg-red-500/10 border border-red-500/20 py-2.5 px-4 rounded-xl"
+                >
+                  <AlertCircle className="w-3.5 h-3.5" />
+                  <span>Access Denied. Incorrect Password.</span>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            <button
+              type="submit"
+              disabled={isUnlocking}
+              className={`w-full font-bold text-xs py-3.5 rounded-2xl transition-all cursor-pointer font-sans shadow-lg uppercase tracking-wider flex items-center justify-center gap-2 ${
+                isUnlocking
+                  ? 'bg-green-500 hover:bg-green-600 text-black shadow-[0_4px_12px_rgba(34,197,94,0.3)]'
+                  : 'bg-purple-500 hover:bg-purple-600 text-black active:scale-[0.98] shadow-[0_4px_15px_rgba(168,85,247,0.35)]'
+              }`}
+            >
+              {isUnlocking ? 'Access Granted' : 'Awaken Console'}
+            </button>
+          </form>
+
+          {/* Device indicators */}
+          <div className="flex items-center gap-1.5 mt-8 text-[10px] text-white/20 tracking-wider uppercase font-semibold">
+            <span className="w-1.5 h-1.5 rounded-full bg-purple-500 animate-pulse" />
+            System Secure
+          </div>
+
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
+
+
+================================================
+FILE: src/components/PlaylistScreen.tsx
+================================================
+import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
+import { Search, Play, Pause, GripVertical, Plus, Heart, Trash2, ListOrdered, ChevronUp, Cloud } from 'lucide-react';
+import { Track, PlayerState } from '../types';
+
+interface PlaylistScreenProps {
+  tracks: Track[];
+  currentTrack: Track;
+  state: PlayerState;
+  playTrack: (index: number) => void;
+  togglePlay: () => void;
+  reorderPlaylist: (startIndex: number, endIndex: number) => void;
+  toggleLike: (trackId: string) => void;
+  addToQueue: (trackId: string) => void;
+  removeFromQueue: (trackId: string) => void;
+}
+
+export function PlaylistScreen({
+  tracks,
+  currentTrack,
+  state,
+  playTrack,
+  togglePlay,
+  reorderPlaylist,
+  toggleLike,
+  addToQueue,
+  removeFromQueue,
+}: PlaylistScreenProps) {
+  const { isPlaying, currentTrackIndex, likedTrackIds, queue } = state;
+  const [searchQuery, setSearchQuery] = useState('');
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [activeMenuTrackId, setActiveMenuTrackId] = useState<string | null>(null);
+
+  // Search filter
+  const filteredTracks = tracks.map((track, originalIndex) => ({ track, originalIndex }))
+    .filter(({ track }) => {
+      const query = searchQuery.toLowerCase();
+      return (
+        track.title.toLowerCase().includes(query) ||
+        track.artist.toLowerCase().includes(query)
+      );
+    });
+
+  // Reordering handlers
+  const handleDragStart = (e: React.DragEvent, index: number) => {
+    setDraggedIndex(index);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+  };
+
+  const handleDrop = (e: React.DragEvent, targetIndex: number) => {
+    e.preventDefault();
+    if (draggedIndex !== null && draggedIndex !== targetIndex) {
+      reorderPlaylist(draggedIndex, targetIndex);
+    }
+    setDraggedIndex(null);
+  };
+
+  const toggleActionMenu = (trackId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setActiveMenuTrackId(activeMenuTrackId === trackId ? null : trackId);
+  };
+
+  return (
+    <div id="playlist-screen" className="flex flex-col h-full text-white px-5 pt-6 relative overflow-hidden">
+      {/* Search Header */}
+      <div className="relative mb-6">
+        <span className="absolute inset-y-0 left-4 flex items-center text-white/30 pointer-events-none">
+          <Search className="w-4 h-4" />
+        </span>
+        <input
+          type="text"
+          placeholder="Search songs or artists..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="w-full bg-white/5 border border-white/5 hover:border-white/10 focus:border-purple-500/50 rounded-2xl py-3 pl-11 pr-4 text-sm text-white placeholder-white/20 focus:outline-none transition-all duration-300 shadow-inner"
+        />
+        {searchQuery && (
+          <button 
+            onClick={() => setSearchQuery('')}
+            className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-white/40 hover:text-white"
+          >
+            clear
+          </button>
+        )}
+      </div>
+
+      {/* Playlist Heading */}
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-xl font-bold font-display tracking-tight text-white/90 flex items-center gap-2">
+          <ListOrdered className="w-5 h-5 text-purple-400" />
+          Tracks
+        </h2>
+        <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-purple-500/15 text-purple-300 border border-purple-500/10">
+          {tracks.length} Available
+        </span>
+      </div>
+
+      {/* Scrollable Track List */}
+      <div className="flex-1 overflow-y-auto pr-1 pb-44 space-y-2.5 custom-scrollbar">
+        {filteredTracks.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 text-white/30">
+            <p className="text-sm">No songs match your search.</p>
+          </div>
+        ) : (
+          filteredTracks.map(({ track, originalIndex }, listIdx) => {
+            const isCurrent = currentTrack?.id === track.id;
+            const isLiked = likedTrackIds.includes(track.id);
+            const inQueue = queue.includes(track.id);
+
+            return (
+              <motion.div
+                key={track.id}
+                draggable
+                onDragStart={(e) => handleDragStart(e, originalIndex)}
+                onDragOver={(e) => handleDragOver(e, originalIndex)}
+                onDrop={(e) => handleDrop(e, originalIndex)}
+                className={`relative flex items-center justify-between p-3 rounded-2xl border transition-all duration-300 select-none group ${
+                  isCurrent
+                    ? 'bg-purple-500/15 border-purple-500/30 shadow-[0_4px_15px_rgba(168,85,247,0.15)]'
+                    : 'bg-white/5 border-white/5 hover:bg-white/10 hover:border-white/10 hover:shadow-md'
+                }`}
+              >
+                {/* Drag handle */}
+                <div 
+                  className="cursor-grab active:cursor-grabbing p-1 text-white/20 hover:text-white/40 transition-colors mr-1"
+                  title="Drag to reorder"
+                >
+                  <GripVertical className="w-4 h-4" />
+                </div>
+
+                {/* Track Details Wrapper */}
+                <div 
+                  onClick={() => playTrack(originalIndex)}
+                  className="flex items-center flex-1 min-w-0 cursor-pointer"
+                >
+                  {/* Rounded Thumbnail */}
+                  <div className="relative w-12 h-12 rounded-xl overflow-hidden flex-shrink-0 shadow-md">
+                    <img
+                      src={track.coverUrl}
+                      alt={track.title}
+                      className="w-full h-full object-cover"
+                      referrerPolicy="no-referrer"
+                    />
+                    {/* Hover Play/Pause overlay */}
+                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                      {isCurrent && isPlaying ? (
+                        <Pause className="w-4 h-4 text-white fill-white" />
+                      ) : (
+                        <Play className="w-4 h-4 text-white fill-white ml-0.5" />
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Title & Artist info */}
+                  <div className="ml-3 flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <h3 className={`text-sm font-semibold truncate ${
+                        isCurrent ? 'text-purple-300' : 'text-white/90'
+                      }`}>
+                        {track.title}
+                      </h3>
+                      {track.googleDriveFileId && (
+                        <Cloud className="w-3.5 h-3.5 text-green-400 shrink-0" title="Synced with Google Drive" />
+                      )}
+                    </div>
+                    <p className="text-xs text-white/40 truncate mt-0.5">{track.artist}</p>
+                  </div>
+                </div>
+
+                {/* Track duration and quick action controls */}
+                <div className="flex items-center gap-2.5 ml-2">
+                  <span className="text-xs font-medium text-white/30 group-hover:text-white/50 transition-colors">
+                    {track.duration}
+                  </span>
+
+                  <button
+                    onClick={() => toggleLike(track.id)}
+                    className="p-1 cursor-pointer"
+                  >
+                    <Heart
+                      className={`w-4 h-4 transition-all ${
+                        isLiked 
+                          ? 'fill-pink-500 text-pink-500 drop-shadow-[0_0_5px_rgba(236,72,153,0.6)]' 
+                          : 'text-white/20 hover:text-white/60'
+                      }`}
+                    />
+                  </button>
+
+                  {/* Action Sheets/Menu triggers */}
+                  <button
+                    onClick={(e) => toggleActionMenu(track.id, e)}
+                    className="p-1 text-white/20 hover:text-white/60 transition-colors cursor-pointer"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {/* Inline Popover Options Sheet */}
+                <AnimatePresence>
+                  {activeMenuTrackId === track.id && (
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                      className="absolute right-2 top-14 bg-black/90 backdrop-blur-md border border-white/10 rounded-xl p-1.5 shadow-2xl z-30 flex flex-col min-w-[140px]"
+                    >
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (inQueue) {
+                            removeFromQueue(track.id);
+                          } else {
+                            addToQueue(track.id);
+                          }
+                          setActiveMenuTrackId(null);
+                        }}
+                        className="flex items-center gap-2 text-left text-xs px-2.5 py-1.5 rounded-lg hover:bg-white/10 cursor-pointer"
+                      >
+                        <Plus className="w-3.5 h-3.5 text-purple-400" />
+                        {inQueue ? 'Remove queue' : 'Add to queue'}
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          playTrack(originalIndex);
+                          setActiveMenuTrackId(null);
+                        }}
+                        className="flex items-center gap-2 text-left text-xs px-2.5 py-1.5 rounded-lg hover:bg-white/10 cursor-pointer"
+                      >
+                        <Play className="w-3.5 h-3.5 text-green-400" />
+                        Play Now
+                      </button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </motion.div>
+            );
+          })
+        )}
+      </div>
+
+      {/* Backdrop overlay to close floating action popups */}
+      {activeMenuTrackId && (
+        <div 
+          className="absolute inset-0 z-20" 
+          onClick={() => setActiveMenuTrackId(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+
+
+================================================
+FILE: src/components/ProfileScreen.tsx
+================================================
+import { useState } from 'react';
+import { motion } from 'motion/react';
+import { Clock, Music, Heart, Volume2, HelpCircle, Keyboard, Play, Sparkles, LogOut, Check, Cloud, CloudOff, Database, Loader2, AlertCircle } from 'lucide-react';
+import { PlayerState, Track } from '../types';
+
+interface ProfileScreenProps {
+  state: PlayerState;
+  tracks: Track[];
+  playTrack: (index: number) => void;
+  setVolume: (vol: number) => void;
+  totalPlays: number;
+  timeStreamedSec: number;
+}
+
+export function ProfileScreen({
+  state,
+  tracks,
+  playTrack,
+  setVolume,
+  totalPlays,
+  timeStreamedSec,
+}: ProfileScreenProps) {
+  const { likedTrackIds, volume } = state;
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
+
+  // Filter out actual liked tracks
+  const likedTracks = tracks.filter((t) => likedTrackIds.includes(t.id));
+
+  const shortcuts = [
+    { key: 'Space', desc: 'Play / Pause music' },
+    { key: '→ / ←', desc: 'Seek forward / backward 5s' },
+    { key: '↑ / ↓', desc: 'Raise / Lower volume' },
+    { key: 'M', desc: 'Toggle instant Mute' },
+    { key: 'N', desc: 'Skip to next song' },
+    { key: 'P', desc: 'Go back to previous' },
+  ];
+
+  const formatTimeStreamed = (seconds: number) => {
+    if (seconds < 60) return `${seconds}s`;
+    const minutes = Math.floor(seconds / 60);
+    if (seconds < 3600) {
+      const remainingSecs = seconds % 60;
+      return `${minutes}m ${remainingSecs}s`;
+    }
+    const hours = seconds / 3600;
+    if (hours < 10) {
+      return `${hours.toFixed(1)} hrs`;
+    }
+    return `${Math.floor(hours)} hrs`;
+  };
+
+  const stats = [
+    { label: 'Time Streamed', value: formatTimeStreamed(timeStreamedSec), icon: Clock, color: 'text-purple-400' },
+    { label: 'Saved Tracks', value: likedTrackIds.length.toString(), icon: Heart, color: 'text-pink-400' },
+    { label: 'Total Plays', value: totalPlays.toLocaleString(), icon: Music, color: 'text-cyan-400' },
+  ];
+
+  const handleCopy = (keyText: string) => {
+    navigator.clipboard.writeText(keyText);
+    setCopiedKey(keyText);
+    setTimeout(() => setCopiedKey(null), 1000);
+  };
+
+  const userDisplayName = 'Rohan';
+  const userPhotoUrl = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=200&auto=format&fit=crop';
+
+  return (
+    <div id="profile-screen" className="flex flex-col h-full text-white px-5 pt-6 pb-40 overflow-y-auto custom-scrollbar">
+      {/* Profile Header */}
+      <div className="flex items-center gap-4 mb-6">
+        <div className="relative w-16 h-16 rounded-2xl overflow-hidden border-2 border-purple-500/30 p-0.5">
+          <img
+            src={userPhotoUrl}
+            alt="Profile Avatar"
+            className="w-full h-full object-cover rounded-xl"
+            referrerPolicy="no-referrer"
+          />
+          <div className="absolute bottom-0 right-0 w-4.5 h-4.5 bg-green-500 border-[3px] border-black rounded-full" />
+        </div>
+        <div>
+          <h2 className="text-xl font-bold font-display tracking-tight text-white/90 truncate max-w-[200px]">{userDisplayName}</h2>
+          <p className="text-xs text-purple-400 font-semibold mt-1 flex items-center gap-1">
+            <Sparkles className="w-3 h-3" />
+            Premium Member
+          </p>
+        </div>
+      </div>
+
+      {/* Grid of stats */}
+      <div className="grid grid-cols-3 gap-2.5 mb-6">
+        {stats.map((stat, i) => {
+          const Icon = stat.icon;
+          return (
+            <div
+              key={i}
+              className="bg-white/5 border border-white/5 p-3.5 rounded-2xl flex flex-col items-center text-center shadow-inner hover:bg-white/10 transition-colors"
+            >
+              <Icon className={`w-5 h-5 ${stat.color} mb-2`} />
+              <span className="text-sm font-bold text-white">{stat.value}</span>
+              <span className="text-[9px] font-semibold text-white/30 uppercase tracking-widest mt-1">
+                {stat.label}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Settings block: Volume control */}
+      <div className="bg-white/5 border border-white/5 p-4 rounded-2xl mb-6">
+        <h3 className="text-xs font-bold text-white/50 uppercase tracking-widest mb-3 flex items-center gap-2">
+          <Volume2 className="w-4 h-4 text-purple-400" />
+          Master Volume Control
+        </h3>
+        <div className="flex items-center gap-3">
+          <Volume2 className="w-4 h-4 text-white/40" />
+          <input
+            type="range"
+            min="0"
+            max="1"
+            step="0.01"
+            value={volume}
+            onChange={(e) => setVolume(parseFloat(e.target.value))}
+            className="flex-1 accent-purple-500 h-1 rounded-full cursor-pointer bg-white/10"
+          />
+          <span className="text-xs font-bold text-white/70 min-w-[24px] text-right">
+            {Math.round(volume * 100)}%
+          </span>
+        </div>
+      </div>
+
+      {/* Shortcuts cheat sheet */}
+      <div className="bg-white/5 border border-white/5 p-4 rounded-2xl mb-6">
+        <h3 className="text-xs font-bold text-white/50 uppercase tracking-widest mb-3 flex items-center gap-2">
+          <Keyboard className="w-4 h-4 text-purple-400" />
+          Keyboard Shortcuts
+        </h3>
+        <div className="space-y-2.5">
+          {shortcuts.map((sh, idx) => (
+            <div
+              key={idx}
+              onClick={() => handleCopy(sh.key)}
+              className="flex items-center justify-between text-xs py-1.5 border-b border-white/5 last:border-none group cursor-pointer"
+            >
+              <span className="text-white/60 group-hover:text-white transition-colors">{sh.desc}</span>
+              <span className="px-2.5 py-1 bg-black/60 border border-white/10 text-[10px] font-bold rounded-lg text-purple-300 tracking-wider shadow-inner flex items-center gap-1 select-none">
+                {copiedKey === sh.key ? <Check className="w-2.5 h-2.5 text-green-400" /> : null}
+                {sh.key}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Liked list peek */}
+      <div className="bg-white/5 border border-white/5 p-4 rounded-2xl">
+        <h3 className="text-xs font-bold text-white/50 uppercase tracking-widest mb-3 flex items-center gap-2">
+          <Heart className="w-4 h-4 text-pink-500 fill-pink-500" />
+          Liked Tracks ({likedTracks.length})
+        </h3>
+        {likedTracks.length === 0 ? (
+          <p className="text-xs text-white/30 text-center py-4">No saved tracks yet. Go hit the heart icon!</p>
+        ) : (
+          <div className="space-y-2.5">
+            {likedTracks.map((track) => {
+              const trackIdx = tracks.findIndex((t) => t.id === track.id);
+              return (
+                <div
+                  key={track.id}
+                  onClick={() => playTrack(trackIdx !== -1 ? trackIdx : 0)}
+                  className="flex items-center justify-between p-2 rounded-xl hover:bg-white/5 cursor-pointer transition-colors"
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <img
+                      src={track.coverUrl}
+                      alt={track.title}
+                      className="w-8 h-8 rounded-lg object-cover"
+                      referrerPolicy="no-referrer"
+                    />
+                    <div className="min-w-0">
+                      <h4 className="text-xs font-bold text-white truncate">{track.title}</h4>
+                      <p className="text-[10px] text-white/40 truncate">{track.artist}</p>
+                    </div>
+                  </div>
+                  <Play className="w-3.5 h-3.5 text-purple-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+
+
+================================================
+FILE: src/components/VinylPlayer.tsx
+================================================
+import React, { useState, useRef, useEffect } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
+import { Shuffle, SkipBack, Play, Pause, SkipForward, Repeat, Heart, MoreVertical, ChevronDown, Cloud, Music } from 'lucide-react';
+import { Track, PlayerState } from '../types';
+
+interface VinylPlayerProps {
+  currentTrack: Track;
+  tracks: Track[];
+  state: PlayerState;
+  playError: string | null;
+  togglePlay: () => void;
+  next: () => void;
+  prev: () => void;
+  seek: (time: number) => void;
+  toggleShuffle: () => void;
+  toggleRepeat: () => void;
+  toggleLike: (trackId: string) => void;
+  playTrack: (index: number) => void;
+  onOpenMenu?: () => void;
+  isDownloadingDriveFile?: boolean;
+}
+
+export function VinylPlayer({
+  currentTrack,
+  tracks,
+  state,
+  playError,
+  togglePlay,
+  next,
+  prev,
+  seek,
+  toggleShuffle,
+  toggleRepeat,
+  toggleLike,
+  playTrack,
+  onOpenMenu,
+  isDownloadingDriveFile,
+}: VinylPlayerProps) {
+  const { isPlaying, currentTime, duration, isShuffle, isRepeat, likedTrackIds, currentTrackIndex } = state;
+
+  const isLiked = likedTrackIds.includes(currentTrack?.id);
+
+  // For the circular progress
+  const radius = 100;
+  const strokeWidth = 3;
+  const circumference = 2 * Math.PI * radius;
+  const progress = duration > 0 ? currentTime / duration : 0;
+  const strokeDashoffset = circumference - progress * circumference;
+
+  const prevTrackIndex = tracks.length > 0 ? (currentTrackIndex - 1 + tracks.length) % tracks.length : 0;
+  const nextTrackIndex = tracks.length > 0 ? (currentTrackIndex + 1) % tracks.length : 0;
+
+  const prevTrack = tracks[prevTrackIndex];
+  const nextTrack = tracks[nextTrackIndex];
+
+  // Dragging the circular seek indicator
+  const progressRingRef = useRef<SVGSVGElement | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+
+  const handleSeekDrag = (e: React.MouseEvent<SVGSVGElement> | React.TouchEvent<SVGSVGElement>) => {
+    if (!progressRingRef.current || duration === 0) return;
+
+    const rect = progressRingRef.current.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+
+    const dx = clientX - centerX;
+    const dy = clientY - centerY;
+
+    // Calculate angle in radians: from -PI to PI
+    // We adjust it so 12 o'clock is 0 or -PI/2
+    let angle = Math.atan2(dy, dx) + Math.PI / 2;
+    if (angle < 0) angle += 2 * Math.PI;
+
+    // Convert angle to percentage (0 to 1)
+    const pct = angle / (2 * Math.PI);
+    seek(pct * duration);
+  };
+
+  useEffect(() => {
+    const handleMouseUp = () => setIsDragging(false);
+    if (isDragging) {
+      window.addEventListener('mouseup', handleMouseUp);
+      window.addEventListener('touchend', handleMouseUp);
+    }
+    return () => {
+      window.removeEventListener('mouseup', handleMouseUp);
+      window.removeEventListener('touchend', handleMouseUp);
+    };
+  }, [isDragging]);
+
+  // Format time MM:SS
+  const formatTime = (secs: number) => {
+    if (isNaN(secs)) return '0:00';
+    const m = Math.floor(secs / 60);
+    const s = Math.floor(secs % 60);
+    return `${m}:${s < 10 ? '0' : ''}${s}`;
+  };
+
+  if (tracks.length === 0) {
+    return (
+      <div id="vinyl-player-empty" className="flex flex-col items-center justify-center h-full text-center px-6 pb-20 select-none">
+        <div className="w-16 h-16 rounded-3xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center mb-6 animate-pulse">
+          <Music className="w-8 h-8 text-purple-400" />
+        </div>
+        <h1 className="text-2xl font-bold font-display tracking-tight text-white mb-2">Empty Library</h1>
+        <p className="text-sm text-white/50 max-w-xs leading-relaxed mb-8">
+          Place your audio files (MP3, M4A, etc.) inside the <code className="bg-white/15 px-1.5 py-0.5 rounded text-purple-300">public/musicfiles</code> directory to scan and load your tracks.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div id="vinyl-player-screen" className="flex flex-col items-center h-full text-white select-none px-6 pt-6">
+      {/* Top Header Row */}
+      <div className="w-full flex items-center justify-between mb-8">
+        <button className="text-white/70 hover:text-white p-2 bg-white/5 hover:bg-white/10 rounded-full transition-all cursor-pointer">
+          <ChevronDown className="w-5 h-5" />
+        </button>
+        <div className="w-12 h-1.5 bg-white/10 rounded-full" />
+        <button 
+          onClick={onOpenMenu}
+          className="text-white/70 hover:text-white p-2 bg-white/5 hover:bg-white/10 rounded-full transition-all cursor-pointer"
+        >
+          <MoreVertical className="w-5 h-5" />
+        </button>
+      </div>
+
+      {/* Song Details Header */}
+      <div className="w-full flex items-start justify-between mb-8 pr-1">
+        <div className="flex flex-col">
+          <AnimatePresence mode="wait">
+            <motion.h1
+              key={currentTrack?.title}
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 10 }}
+              className="text-3xl font-bold tracking-tight text-white font-display"
+            >
+              {currentTrack?.title}
+            </motion.h1>
+          </AnimatePresence>
+          <AnimatePresence mode="wait">
+            <motion.p
+              key={currentTrack?.artist}
+              initial={{ opacity: 0, y: -5 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 5 }}
+              className="text-base text-white/50 font-medium mt-1"
+            >
+              {currentTrack?.artist}
+            </motion.p>
+          </AnimatePresence>
+        </div>
+
+        {/* Favorite Icon */}
+        <motion.button
+          onClick={() => toggleLike(currentTrack?.id)}
+          whileTap={{ scale: 0.8 }}
+          className="p-2 cursor-pointer"
+        >
+          <Heart
+            className={`w-6 h-6 transition-all duration-300 ${
+              isLiked 
+                ? 'fill-pink-500 text-pink-500 drop-shadow-[0_0_8px_rgba(236,72,153,0.6)]' 
+                : 'text-white/60 hover:text-white'
+            }`}
+          />
+        </motion.button>
+      </div>
+
+      {/* Vinyl Disc & Circular Seek Container with Peeking Covers */}
+      <div className="relative w-full flex items-center justify-center my-6 h-[270px] overflow-visible">
+        {/* Left Peeking Album Cover */}
+        <div 
+          onClick={prev}
+          className="absolute -left-[140px] w-[180px] h-[180px] rounded-full overflow-hidden border border-white/5 bg-black/40 opacity-20 hover:opacity-40 transition-all duration-300 transform scale-90 cursor-pointer flex-shrink-0 select-none z-10"
+        >
+          <img
+            src={prevTrack?.coverUrl}
+            alt={prevTrack?.title}
+            className="w-full h-full object-cover pointer-events-none filter blur-[1px]"
+            referrerPolicy="no-referrer"
+          />
+        </div>
+
+        {/* Center Vinyl + Acrylic Progress Ring */}
+        <div className="relative w-[230px] h-[230px] flex items-center justify-center z-20">
+          {/* Glass Inner Rim Shadow */}
+          <div className="absolute inset-0 rounded-full border border-white/10 bg-white/5 backdrop-blur-[2px] shadow-[inset_0_4px_20px_rgba(255,255,255,0.05),0_15px_35px_rgba(0,0,0,0.6)]" />
+
+          {/* Glowing Vinyl Track Progress Line Circle */}
+          <svg
+            ref={progressRingRef}
+            className="absolute top-0 left-0 w-full h-full transform -rotate-90 cursor-pointer select-none"
+            onMouseDown={(e) => {
+              setIsDragging(true);
+              handleSeekDrag(e);
+            }}
+            onMouseMove={(e) => {
+              if (isDragging) handleSeekDrag(e);
+            }}
+            onTouchStart={(e) => {
+              setIsDragging(true);
+              handleSeekDrag(e);
+            }}
+            onTouchMove={(e) => {
+              if (isDragging) handleSeekDrag(e);
+            }}
+          >
+            {/* Dark track track background */}
+            <circle
+              cx="115"
+              cy="115"
+              r={radius}
+              fill="transparent"
+              stroke="rgba(255,255,255,0.05)"
+              strokeWidth={strokeWidth}
+            />
+            {/* Glowing neon-blue progress arc */}
+            <circle
+              cx="115"
+              cy="115"
+              r={radius}
+              fill="transparent"
+              stroke="#00E5FF"
+              strokeWidth={strokeWidth}
+              strokeDasharray={circumference}
+              strokeDashoffset={strokeDashoffset}
+              strokeLinecap="round"
+              className="transition-all duration-150 drop-shadow-[0_0_5px_rgba(0,229,255,0.8)]"
+            />
+          </svg>
+
+          {/* Vinyl Disc Body (Rotating Grooved Disk) */}
+          <motion.div
+            animate={{ rotate: isPlaying ? 360 : 0 }}
+            transition={{
+              rotate: {
+                repeat: Infinity,
+                duration: 12,
+                ease: 'linear',
+              },
+            }}
+            className="relative w-[180px] h-[180px] rounded-full bg-[#0d0d0d] border border-neutral-900 flex items-center justify-center shadow-[inset_0_0_15px_rgba(255,255,255,0.05),0_10px_25px_rgba(0,0,0,0.8)] cursor-pointer"
+            onClick={togglePlay}
+          >
+            {/* Vinyl Grooves Texture */}
+            <div className="absolute inset-2 rounded-full border border-neutral-800/80 pointer-events-none" />
+            <div className="absolute inset-4 rounded-full border border-neutral-800/60 pointer-events-none" />
+            <div className="absolute inset-6 rounded-full border border-neutral-800/40 pointer-events-none" />
+            <div className="absolute inset-8 rounded-full border border-neutral-800/20 pointer-events-none" />
+            <div className="absolute inset-10 rounded-full border border-neutral-800/10 pointer-events-none" />
+
+            {/* Inner Album Artwork Label */}
+            <div className="w-[110px] h-[110px] rounded-full overflow-hidden border-[3px] border-[#151515] shadow-lg flex-shrink-0 relative">
+              <AnimatePresence mode="wait">
+                <motion.img
+                  key={currentTrack?.coverUrl}
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.9 }}
+                  transition={{ duration: 0.3 }}
+                  src={currentTrack?.coverUrl}
+                  alt={currentTrack?.title}
+                  className="w-full h-full object-cover"
+                  referrerPolicy="no-referrer"
+                />
+              </AnimatePresence>
+              {isDownloadingDriveFile && (
+                <div className="absolute inset-0 bg-black/75 flex flex-col items-center justify-center text-center z-10">
+                  <div className="w-5 h-5 rounded-full border-2 border-purple-500/30 border-t-purple-400 animate-spin mb-1 drop-shadow-[0_0_8px_rgba(168,85,247,0.5)]" />
+                  <span className="text-[8px] font-bold text-purple-300 uppercase tracking-widest animate-pulse">Streaming</span>
+                </div>
+              )}
+            </div>
+
+            {/* Central Spindle Hole */}
+            <div className="absolute w-4 h-4 rounded-full bg-[#121212] border-2 border-[#1a1a1a] shadow-inner flex items-center justify-center z-10">
+              <div className="w-1.5 h-1.5 rounded-full bg-[#e5e5e5]" />
+            </div>
+          </motion.div>
+
+          {/* Time Display centered underneath the disc, inside the outer ring */}
+          <div className="absolute bottom-[16px] text-xs font-semibold tracking-wider text-white/60 select-none">
+            {formatTime(currentTime)}
+          </div>
+        </div>
+
+        {/* Right Peeking Album Cover */}
+        <div 
+          onClick={next}
+          className="absolute -right-[140px] w-[180px] h-[180px] rounded-full overflow-hidden border border-white/5 bg-black/40 opacity-20 hover:opacity-40 transition-all duration-300 transform scale-90 cursor-pointer flex-shrink-0 select-none z-10"
+        >
+          <img
+            src={nextTrack?.coverUrl}
+            alt={nextTrack?.title}
+            className="w-full h-full object-cover pointer-events-none filter blur-[1px]"
+            referrerPolicy="no-referrer"
+          />
+        </div>
+      </div>
+
+      {/* Autoplay blocked error notice */}
+      {playError && (
+        <div className="text-xs bg-purple-500/10 border border-purple-500/20 rounded-full px-4 py-1.5 mb-2 text-purple-300 animate-pulse text-center w-full max-w-[280px]">
+          Click vinyl/play to enable audio stream
+        </div>
+      )}
+
+      {/* Main Playback Controls Section */}
+      <div className="w-full max-w-[280px] flex items-center justify-between mt-auto mb-28">
+        {/* Shuffle Button */}
+        <button
+          onClick={toggleShuffle}
+          className={`p-2 transition-all duration-300 rounded-full cursor-pointer hover:bg-white/5 ${
+            isShuffle 
+              ? 'text-purple-400 drop-shadow-[0_0_8px_rgba(168,85,247,0.8)] scale-110' 
+              : 'text-white/40 hover:text-white/70'
+          }`}
+        >
+          <Shuffle className="w-5 h-5" />
+        </button>
+
+        {/* Previous Track Button */}
+        <button
+          onClick={prev}
+          className="p-3 text-white/70 hover:text-white hover:scale-110 active:scale-95 transition-all rounded-full bg-white/5 hover:bg-white/10 cursor-pointer"
+        >
+          <SkipBack className="w-5 h-5 fill-current" />
+        </button>
+
+        {/* Play / Pause Toggle Button */}
+        <button
+          onClick={togglePlay}
+          className="relative w-14 h-14 rounded-full flex items-center justify-center bg-white text-black hover:scale-105 active:scale-95 transition-all shadow-[0_4px_20px_rgba(255,255,255,0.25)] cursor-pointer"
+        >
+          {isPlaying ? (
+            <Pause className="w-6 h-6 fill-black stroke-black" />
+          ) : (
+            <Play className="w-6 h-6 fill-black stroke-black ml-0.5" />
+          )}
+        </button>
+
+        {/* Next Track Button */}
+        <button
+          onClick={next}
+          className="p-3 text-white/70 hover:text-white hover:scale-110 active:scale-95 transition-all rounded-full bg-white/5 hover:bg-white/10 cursor-pointer"
+        >
+          <SkipForward className="w-5 h-5 fill-current" />
+        </button>
+
+        {/* Repeat Button */}
+        <button
+          onClick={toggleRepeat}
+          className={`relative p-2 transition-all duration-300 rounded-full cursor-pointer hover:bg-white/5 ${
+            isRepeat !== 'none'
+              ? 'text-purple-400 drop-shadow-[0_0_8px_rgba(168,85,247,0.8)] scale-110'
+              : 'text-white/40 hover:text-white/70'
+          }`}
+        >
+          <Repeat className="w-5 h-5" />
+          {isRepeat === 'one' && (
+            <span className="absolute -top-1 -right-1 bg-purple-500 text-black font-bold text-[8px] rounded-full w-3.5 h-3.5 flex items-center justify-center border border-black">
+              1
+            </span>
+          )}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+
+
+================================================
+FILE: src/data/tracks.ts
+================================================
+import { Track } from '../types';
+
+export const tracks: Track[] = [];
+
+
+
+================================================
+FILE: src/hooks/useAudioPlayer.ts
+================================================
+import { useState, useEffect, useRef } from 'react';
+import { Track, PlayerState } from '../types';
+import { tracks as initialTracks } from '../data/tracks';
+
+export function useAudioPlayer() {
+  const [tracks, setTracks] = useState<Track[]>(() => {
+    const saved = localStorage.getItem('aura_tracks');
+    if (saved) {
+      try {
+        const parsed: Track[] = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
+      } catch (e) {
+        console.warn('Error parsing cached tracks:', e);
+      }
+    }
+    return [];
+  });
+
+  const [totalPlays, setTotalPlays] = useState<number>(() => {
+    const saved = localStorage.getItem('aura_total_plays');
+    return saved ? parseInt(saved, 10) : 0;
+  });
+
+  const [timeStreamedSec, setTimeStreamedSec] = useState<number>(() => {
+    const saved = localStorage.getItem('aura_time_streamed_sec');
+    return saved ? parseInt(saved, 10) : 0;
+  });
+
+  useEffect(() => {
+    localStorage.setItem('aura_total_plays', totalPlays.toString());
+  }, [totalPlays]);
+
+  useEffect(() => {
+    localStorage.setItem('aura_time_streamed_sec', timeStreamedSec.toString());
+  }, [timeStreamedSec]);
+
+  const [state, setState] = useState<PlayerState>(() => {
+    const savedLiked = localStorage.getItem('aura_liked');
+    const savedVolume = localStorage.getItem('aura_volume');
+    const savedShuffle = localStorage.getItem('aura_shuffle');
+    const savedRepeat = localStorage.getItem('aura_repeat');
+    return {
+      isPlaying: false,
+      currentTime: 0,
+      duration: 180, // Fallback duration
+      volume: savedVolume ? parseFloat(savedVolume) : 0.8,
+      isMuted: false,
+      isShuffle: savedShuffle === 'true',
+      isRepeat: (savedRepeat as 'none' | 'all' | 'one') || 'all',
+      currentTrackIndex: 0,
+      likedTrackIds: savedLiked ? JSON.parse(savedLiked) : [],
+      queue: [],
+    };
+  });
+
+  useEffect(() => {
+    localStorage.setItem('aura_shuffle', state.isShuffle.toString());
+  }, [state.isShuffle]);
+
+  useEffect(() => {
+    localStorage.setItem('aura_repeat', state.isRepeat);
+  }, [state.isRepeat]);
+
+  const [playError, setPlayError] = useState<string | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const animationFrameRef = useRef<number | null>(null);
+
+  // Web Audio refs for spectral visualizer
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const sourceRef = useRef<MediaElementAudioSourceNode | null>(null);
+  const handleTrackEndedRef = useRef<() => void>(() => {});
+
+  // Initialize analyser node
+  const initAnalyser = () => {
+    if (!audioRef.current) return;
+    if (analyserRef.current) return;
+
+    try {
+      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioContextClass) return;
+
+      const ctx = new AudioContextClass();
+      const analyser = ctx.createAnalyser();
+      analyser.fftSize = 128; // gives 64 frequency bins, perfect for our spectrum
+      analyser.smoothingTimeConstant = 0.75;
+
+      const source = ctx.createMediaElementSource(audioRef.current);
+      source.connect(analyser);
+      analyser.connect(ctx.destination);
+
+      audioContextRef.current = ctx;
+      analyserRef.current = analyser;
+      sourceRef.current = source;
+    } catch (err) {
+      console.warn('Web Audio API is not supported or failed to init:', err);
+    }
+  };
+
+  // Initialize Audio
+  useEffect(() => {
+    const audio = new Audio();
+    audio.preload = 'auto';
+    audio.crossOrigin = 'anonymous'; // Important for CORS security with AudioContext
+    audioRef.current = audio;
+
+    const handleTimeUpdate = () => {
+      setState((prev) => ({ ...prev, currentTime: audio.currentTime }));
+    };
+
+    const handleDurationChange = () => {
+      if (audio.duration && !isNaN(audio.duration)) {
+        setState((prev) => ({ ...prev, duration: audio.duration }));
+      }
+    };
+
+    const handleLoadedMetadata = () => {
+      if (audio.duration && !isNaN(audio.duration)) {
+        setState((prev) => ({ ...prev, duration: audio.duration }));
+      }
+    };
+
+    const handleEnded = () => {
+      handleTrackEndedRef.current();
+    };
+
+    const handleError = () => {
+      console.warn('Audio loading failed, switching to simulated playback');
+      // If a track fails, we don't crash, we let it simulate so the visualizer and timers still animate
+    };
+
+    audio.addEventListener('timeupdate', handleTimeUpdate);
+    audio.addEventListener('durationchange', handleDurationChange);
+    audio.addEventListener('loadedmetadata', handleLoadedMetadata);
+    audio.addEventListener('ended', handleEnded);
+    audio.addEventListener('error', handleError);
+
+    return () => {
+      audio.removeEventListener('timeupdate', handleTimeUpdate);
+      audio.removeEventListener('durationchange', handleDurationChange);
+      audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
+      audio.removeEventListener('ended', handleEnded);
+      audio.removeEventListener('error', handleError);
+      audio.pause();
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+    };
+  }, []);
+
+  const currentTrack = tracks[state.currentTrackIndex] || tracks[0];
+
+  // Fetch local music folder tracks on mount
+  useEffect(() => {
+    const loadLocalTracks = async () => {
+      const fallbackTracks: Track[] = [
+        {
+          id: "github-0-chahun-main-ya-naa",
+          title: "Chahun Main Ya Naa",
+          artist: "Bhoomika",
+          album: "Aura Sessions",
+          duration: "4:00",
+          durationSec: 240,
+          coverUrl: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?q=80&w=500&auto=format&fit=crop",
+          audioUrl: "https://raw.githubusercontent.com/Ronit-CodeWizard/wizard-resources/main/Musics/BHO/Chahun%20Main%20Ya%20Naa%20-%20BHO.mp3",
+        },
+        {
+          id: "github-1-ishq-mubarak",
+          title: "Ishq Mubarak",
+          artist: "Bhoomika",
+          album: "Aura Sessions",
+          duration: "4:00",
+          durationSec: 240,
+          coverUrl: "https://images.unsplash.com/photo-1498038432885-c6f3f1b912ee?q=80&w=500&auto=format&fit=crop",
+          audioUrl: "https://raw.githubusercontent.com/Ronit-CodeWizard/wizard-resources/main/Musics/BHO/Ishq%20Mubarak%20-%20BHO.mp3",
+        },
+        {
+          id: "github-2-jeena-jeena",
+          title: "Jeena Jeena",
+          artist: "Bhoomika",
+          album: "Aura Sessions",
+          duration: "4:00",
+          durationSec: 240,
+          coverUrl: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?q=80&w=500&auto=format&fit=crop",
+          audioUrl: "https://raw.githubusercontent.com/Ronit-CodeWizard/wizard-resources/main/Musics/BHO/Jeena%20Jeena%20-%20BHO.mp3",
+        },
+        {
+          id: "github-3-nazar-na-lag-jaaye",
+          title: "Nazar Na Lag Jaaye",
+          artist: "Bhoomika",
+          album: "Aura Sessions",
+          duration: "4:00",
+          durationSec: 240,
+          coverUrl: "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?q=80&w=500&auto=format&fit=crop",
+          audioUrl: "https://raw.githubusercontent.com/Ronit-CodeWizard/wizard-resources/main/Musics/BHO/Nazar%20Na%20Lag%20Jaaye%20-%20BHO.mp3",
+        },
+        {
+          id: "github-4-saiyaara",
+          title: "Saiyaara",
+          artist: "Bhoomika",
+          album: "Aura Sessions",
+          duration: "4:00",
+          durationSec: 240,
+          coverUrl: "https://images.unsplash.com/photo-1511379938547-c1f69419868d?q=80&w=500&auto=format&fit=crop",
+          audioUrl: "https://raw.githubusercontent.com/Ronit-CodeWizard/wizard-resources/main/Musics/BHO/Saiyaara%20-%20BHO.mp3",
+        },
+        {
+          id: "github-5-tum-ho-toh",
+          title: "Tum Ho Toh",
+          artist: "Bhoomika",
+          album: "Aura Sessions",
+          duration: "4:00",
+          durationSec: 240,
+          coverUrl: "https://images.unsplash.com/photo-1501386761578-eac5c94b800a?q=80&w=500&auto=format&fit=crop",
+          audioUrl: "https://raw.githubusercontent.com/Ronit-CodeWizard/wizard-resources/main/Musics/BHO/Tum%20Ho%20Toh%20-%20BHO.mp3",
+        },
+      ];
+
+      let fetchedTracks: Track[] = [];
+
+      try {
+        // Step 1: Attempt to fetch from local API endpoint
+        const response = await fetch('/api/tracks');
+        if (response.ok) {
+          const contentType = response.headers.get('content-type');
+          if (contentType && contentType.includes('application/json')) {
+            const localTracks = await response.json() as Track[];
+            if (localTracks && localTracks.length > 0) {
+              fetchedTracks = localTracks;
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('Local tracks endpoint not reachable, fetching directly from GitHub...', err);
+      }
+
+      // Step 2: If local endpoint didn't return tracks, fetch directly from GitHub
+      if (fetchedTracks.length === 0) {
+        try {
+          const ghResponse = await fetch('https://api.github.com/repos/Ronit-CodeWizard/wizard-resources/contents/Musics/BHO');
+          if (ghResponse.ok) {
+            const files = await ghResponse.json() as any[];
+            if (Array.isArray(files) && files.length > 0) {
+              const audioFiles = files.filter(
+                (f) => f.type === 'file' && f.name.toLowerCase().endsWith('.mp3')
+              );
+
+              const coverImages = [
+                "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?q=80&w=500&auto=format&fit=crop",
+                "https://images.unsplash.com/photo-1498038432885-c6f3f1b912ee?q=80&w=500&auto=format&fit=crop",
+                "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?q=80&w=500&auto=format&fit=crop",
+                "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?q=80&w=500&auto=format&fit=crop",
+                "https://images.unsplash.com/photo-1511379938547-c1f69419868d?q=80&w=500&auto=format&fit=crop",
+                "https://images.unsplash.com/photo-1501386761578-eac5c94b800a?q=80&w=500&auto=format&fit=crop"
+              ];
+
+              fetchedTracks = audioFiles.map((file, index) => {
+                let title = file.name.replace(/\.[^/.]+$/, ""); // Strip extension
+                if (title.includes(" - ")) {
+                  title = title.split(" - ")[0];
+                } else if (title.includes("-")) {
+                  title = title.split("-")[0];
+                }
+                title = title.trim();
+
+                return {
+                  id: `github-${index}-${encodeURIComponent(file.name)}`,
+                  title: title || "Untitled Track",
+                  artist: "Bhoomika",
+                  album: "Aura Sessions",
+                  duration: "4:00",
+                  durationSec: 240,
+                  coverUrl: coverImages[index % coverImages.length],
+                  audioUrl: file.download_url || `https://raw.githubusercontent.com/Ronit-CodeWizard/wizard-resources/main/Musics/BHO/${encodeURIComponent(file.name)}`,
+                };
+              });
+            }
+          }
+        } catch (ghErr) {
+          console.warn('Direct GitHub fetch failed, loading static premium fallbacks', ghErr);
+        }
+      }
+
+      // Step 3: Use static tracks if both failed
+      if (fetchedTracks.length === 0) {
+        fetchedTracks = fallbackTracks;
+      }
+
+      // Restore custom duration / info from localStorage
+      const savedStr = localStorage.getItem('aura_tracks');
+      let savedTracks: Track[] = [];
+      if (savedStr) {
+        try {
+          savedTracks = JSON.parse(savedStr);
+        } catch (e) {}
+      }
+
+      const mergedTracks = fetchedTracks.map((track) => {
+        const saved = savedTracks.find((t) => t.id === track.id);
+        if (saved) {
+          return {
+            ...track,
+            duration: saved.duration || track.duration,
+            durationSec: saved.durationSec || track.durationSec,
+          };
+        }
+        return track;
+      });
+
+      setTracks(mergedTracks);
+
+      // Preload metadata to resolve correct audio duration in the background
+      mergedTracks.forEach((track) => {
+        if (track.audioUrl && (!track.durationSec || track.durationSec === 240)) {
+          const tempAudio = new Audio();
+          tempAudio.src = track.audioUrl;
+          tempAudio.preload = 'metadata';
+          tempAudio.addEventListener('loadedmetadata', () => {
+            if (tempAudio.duration && !isNaN(tempAudio.duration)) {
+              const durationSec = tempAudio.duration;
+              const mins = Math.floor(durationSec / 60);
+              const secs = Math.floor(durationSec % 60);
+              const durationStr = `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+
+              setTracks((prevTracks) => {
+                const updated = [...prevTracks];
+                const trackIdx = updated.findIndex((t) => t.id === track.id);
+                if (trackIdx !== -1) {
+                  updated[trackIdx] = {
+                    ...updated[trackIdx],
+                    duration: durationStr,
+                    durationSec: Math.floor(durationSec),
+                  };
+                }
+                return updated;
+              });
+            }
+          });
+        }
+      });
+    };
+
+    loadLocalTracks();
+  }, []);
+
+  // Update audio source when track index changes
+  useEffect(() => {
+    if (!audioRef.current || !currentTrack) return;
+
+    const audio = audioRef.current;
+    const wasPlaying = state.isPlaying;
+
+    audio.src = currentTrack.audioUrl;
+    audio.load();
+    
+    // Reset timer
+    setState((prev) => ({ 
+      ...prev, 
+      currentTime: 0, 
+      duration: currentTrack.durationSec || 240 
+    }));
+
+    if (wasPlaying) {
+      setTimeout(() => {
+        playAudio(true); // Pass true to register play counter for new song
+      }, 50);
+    }
+  }, [state.currentTrackIndex]);
+
+  // Update volume
+  useEffect(() => {
+    if (!audioRef.current) return;
+    audioRef.current.volume = state.isMuted ? 0 : state.volume;
+    localStorage.setItem('aura_volume', state.volume.toString());
+  }, [state.volume, state.isMuted]);
+
+  // Save liked tracks
+  useEffect(() => {
+    localStorage.setItem('aura_liked', JSON.stringify(state.likedTrackIds));
+  }, [state.likedTrackIds]);
+
+  // Save track ordering
+  useEffect(() => {
+    localStorage.setItem('aura_tracks', JSON.stringify(tracks));
+  }, [tracks]);
+
+  // Track listening time in real-time
+  useEffect(() => {
+    if (!state.isPlaying) return;
+    const interval = setInterval(() => {
+      setTimeStreamedSec((prev) => prev + 1);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [state.isPlaying]);
+
+  // Simulation fallback for browser-blocked autoplay or dead links
+  const simulationTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const startSimulation = () => {
+    if (simulationTimerRef.current) clearInterval(simulationTimerRef.current);
+    simulationTimerRef.current = setInterval(() => {
+      setState((prev) => {
+        const nextTime = prev.currentTime + 1;
+        if (nextTime >= prev.duration) {
+          clearInterval(simulationTimerRef.current!);
+          setTimeout(() => handleTrackEndedRef.current(), 100);
+          return { ...prev, currentTime: 0 };
+        }
+        return { ...prev, currentTime: nextTime };
+      });
+    }, 1000);
+  };
+
+  const stopSimulation = () => {
+    if (simulationTimerRef.current) {
+      clearInterval(simulationTimerRef.current);
+      simulationTimerRef.current = null;
+    }
+  };
+
+  const playAudio = async (isNewTrack = false) => {
+    if (!audioRef.current) return;
+    setPlayError(null);
+    try {
+      // Initialize analyser on user gesture
+      initAnalyser();
+
+      if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
+        await audioContextRef.current.resume();
+      }
+
+      stopSimulation();
+      if (isNewTrack || !state.isPlaying) {
+        setTotalPlays((p) => p + 1);
+      }
+      setState((prev) => ({ ...prev, isPlaying: true }));
+      await audioRef.current.play();
+    } catch (err: any) {
+      console.warn('Playback block or issue:', err);
+      if (err.name === 'NotAllowedError') {
+        setPlayError('Interaction required to play audio');
+      }
+      // Start simulated playback so the circular vinyl and seekbar still animate!
+      if (isNewTrack || !state.isPlaying) {
+        setTotalPlays((p) => p + 1);
+      }
+      setState((prev) => ({ ...prev, isPlaying: true }));
+      startSimulation();
+    }
+  };
+
+  const pauseAudio = () => {
+    if (!audioRef.current) return;
+    audioRef.current.pause();
+    stopSimulation();
+    setState((prev) => ({ ...prev, isPlaying: false }));
+  };
+
+  const togglePlay = () => {
+    if (state.isPlaying) {
+      pauseAudio();
+    } else {
+      playAudio();
+    }
+  };
+
+  const playTrack = (index: number, forcePlay = false) => {
+    if (index < 0 || index >= tracks.length) return;
+    if (index === state.currentTrackIndex && !forcePlay) {
+      if (!state.isPlaying) {
+        playAudio();
+      } else {
+        pauseAudio();
+      }
+    } else {
+      setState((prev) => ({ ...prev, currentTrackIndex: index, isPlaying: true }));
+      if (index === state.currentTrackIndex && forcePlay) {
+        if (audioRef.current) {
+          audioRef.current.src = tracks[index].audioUrl;
+          audioRef.current.load();
+        }
+        setState((prev) => ({ 
+          ...prev, 
+          currentTime: 0, 
+          duration: tracks[index].durationSec || 240,
+          isPlaying: true
+        }));
+        setTimeout(() => {
+          playAudio(true);
+        }, 50);
+      }
+    }
+  };
+
+  const next = () => {
+    if (tracks.length === 0) return;
+    if (state.queue.length > 0) {
+      const nextTrackId = state.queue[0];
+      const nextIndex = tracks.findIndex((t) => t.id === nextTrackId);
+      setState((prev) => ({
+        ...prev,
+        queue: prev.queue.slice(1),
+        currentTrackIndex: nextIndex !== -1 ? nextIndex : (prev.currentTrackIndex + 1) % tracks.length,
+        isPlaying: true,
+      }));
+      return;
+    }
+
+    if (state.isShuffle) {
+      if (tracks.length <= 1) {
+        playTrack(0, true);
+      } else {
+        let randIndex = state.currentTrackIndex;
+        while (randIndex === state.currentTrackIndex) {
+          randIndex = Math.floor(Math.random() * tracks.length);
+        }
+        playTrack(randIndex, true);
+      }
+    } else {
+      const nextIndex = (state.currentTrackIndex + 1) % tracks.length;
+      playTrack(nextIndex, true);
+    }
+  };
+
+  const prev = () => {
+    if (tracks.length === 0) return;
+    if (state.isShuffle) {
+      if (tracks.length <= 1) {
+        playTrack(0, true);
+      } else {
+        let randIndex = state.currentTrackIndex;
+        while (randIndex === state.currentTrackIndex) {
+          randIndex = Math.floor(Math.random() * tracks.length);
+        }
+        playTrack(randIndex, true);
+      }
+    } else {
+      const prevIndex = (state.currentTrackIndex - 1 + tracks.length) % tracks.length;
+      playTrack(prevIndex, true);
+    }
+  };
+
+  const handleTrackEnded = () => {
+    if (state.isRepeat === 'one') {
+      if (audioRef.current) {
+        audioRef.current.currentTime = 0;
+        playAudio();
+      }
+    } else if (state.isRepeat === 'all') {
+      next();
+    } else {
+      // none
+      if (state.currentTrackIndex < tracks.length - 1) {
+        next();
+      } else {
+        pauseAudio();
+      }
+    }
+  };
+  handleTrackEndedRef.current = handleTrackEnded;
+
+  const seek = (time: number) => {
+    if (!audioRef.current) return;
+    const clampedTime = Math.max(0, Math.min(time, state.duration));
+    audioRef.current.currentTime = clampedTime;
+    setState((prev) => ({ ...prev, currentTime: clampedTime }));
+  };
+
+  const setVolume = (vol: number) => {
+    const clampedVol = Math.max(0, Math.min(vol, 1));
+    setState((prev) => ({ ...prev, volume: clampedVol, isMuted: clampedVol === 0 }));
+  };
+
+  const toggleMute = () => {
+    setState((prev) => ({ ...prev, isMuted: !prev.isMuted }));
+  };
+
+  const toggleShuffle = () => {
+    setState((prev) => ({ ...prev, isShuffle: !prev.isShuffle }));
+  };
+
+  const toggleRepeat = () => {
+    setState((prev) => {
+      let nextRepeat: 'none' | 'all' | 'one' = 'none';
+      if (prev.isRepeat === 'none') nextRepeat = 'all';
+      else if (prev.isRepeat === 'all') nextRepeat = 'one';
+      return { ...prev, isRepeat: nextRepeat };
+    });
+  };
+
+  const toggleLike = (trackId: string) => {
+    setState((prev) => {
+      const isLiked = prev.likedTrackIds.includes(trackId);
+      const likedTrackIds = isLiked
+        ? prev.likedTrackIds.filter((id) => id !== trackId)
+        : [...prev.likedTrackIds, trackId];
+      return { ...prev, likedTrackIds };
+    });
+  };
+
+  const reorderPlaylist = (startIndex: number, endIndex: number) => {
+    if (startIndex < 0 || startIndex >= tracks.length || endIndex < 0 || endIndex >= tracks.length) return;
+    const result = [...tracks];
+    const [removed] = result.splice(startIndex, 1);
+    result.splice(endIndex, 0, removed);
+    
+    // Adjust current playing index to maintain playing song
+    const currentPlayingTrack = tracks[state.currentTrackIndex];
+    const newPlayingIndex = result.findIndex((t) => t.id === currentPlayingTrack.id);
+
+    setTracks(result);
+    setState((prev) => ({
+      ...prev,
+      currentTrackIndex: newPlayingIndex !== -1 ? newPlayingIndex : 0,
+    }));
+  };
+
+  const addToQueue = (trackId: string) => {
+    setState((prev) => {
+      if (prev.queue.includes(trackId)) return prev;
+      return { ...prev, queue: [...prev.queue, trackId] };
+    });
+  };
+
+  const removeFromQueue = (trackId: string) => {
+    setState((prev) => ({
+      ...prev,
+      queue: prev.queue.filter((id) => id !== trackId),
+    }));
+  };
+
+  return {
+    tracks,
+    currentTrack,
+    state,
+    playError,
+    audioElement: audioRef.current,
+    analyserNode: analyserRef.current,
+    totalPlays,
+    timeStreamedSec,
+    togglePlay,
+    playTrack,
+    next,
+    prev,
+    seek,
+    setVolume,
+    toggleMute,
+    toggleShuffle,
+    toggleRepeat,
+    toggleLike,
+    reorderPlaylist,
+    addToQueue,
+    removeFromQueue,
+  };
+}
+export type UseAudioPlayerType = ReturnType<typeof useAudioPlayer>;
+
+

@@ -1,21 +1,55 @@
 import { useState, useEffect, useRef } from 'react';
 import { Track, PlayerState } from '../types';
 import { tracks as initialTracks } from '../data/tracks';
+import { bhoMusicApi } from '../services/bhoMusicApi';
+
+export interface CatalogueDiagnostic {
+  endpoint: string;
+  status: number | null;
+  songCount: number;
+  error: string | null;
+  diagnostic: string | null;
+}
 
 export function useAudioPlayer() {
+  const [isLoadingCatalogue, setIsLoadingCatalogue] = useState<boolean>(true);
+  const [catalogueError, setCatalogueError] = useState<string | null>(null);
+  const [requiresAccessKey, setRequiresAccessKey] = useState<boolean>(false);
+  const [bhoMeta, setBhoMeta] = useState<{ repository?: string; folder?: string; count?: number } | null>(null);
+  const [catalogueDiagnostic, setCatalogueDiagnostic] = useState<CatalogueDiagnostic>({
+    endpoint: '/api/songs',
+    status: null,
+    songCount: 0,
+    error: null,
+    diagnostic: null,
+  });
+
   const [tracks, setTracks] = useState<Track[]>(() => {
     const saved = localStorage.getItem('aura_tracks');
     if (saved) {
       try {
         const parsed: Track[] = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed;
+          // Remove all old mock tracks
+          const valid = parsed
+            .filter(
+              (t) =>
+                !t.id.startsWith('github-') &&
+                !t.id.startsWith('bhoomify-') &&
+                t.album !== 'Aura Sessions' &&
+                (t.album === 'Musics/BHO' || t.source === 'worker' || t.source === 'custom' || t.id.startsWith('user-'))
+            )
+            .map((t) => ({
+              ...t,
+              artist: (!t.artist || t.artist.toLowerCase().includes('ronit')) ? 'BHOOMIKA' : t.artist,
+            }));
+          if (valid.length > 0) return valid;
         }
       } catch (e) {
         console.warn('Error parsing cached tracks:', e);
       }
     }
-    return [];
+    return initialTracks;
   });
 
   const [totalPlays, setTotalPlays] = useState<number>(() => {
@@ -117,8 +151,19 @@ export function useAudioPlayer() {
     };
 
     const handleLoadedMetadata = () => {
-      if (audio.duration && !isNaN(audio.duration)) {
+      if (audio.duration && !isNaN(audio.duration) && audio.duration > 0) {
         setState((prev) => ({ ...prev, duration: audio.duration }));
+        const durSec = Math.floor(audio.duration);
+        const mins = Math.floor(durSec / 60);
+        const secs = durSec % 60;
+        const formatted = `${mins}:${secs.toString().padStart(2, '0')}`;
+        setTracks((prev) =>
+          prev.map((t, idx) =>
+            idx === state.currentTrackIndex && (!t.durationSec || t.durationSec === 0)
+              ? { ...t, duration: formatted, durationSec: durSec }
+              : t
+          )
+        );
       }
     };
 
@@ -127,8 +172,9 @@ export function useAudioPlayer() {
     };
 
     const handleError = () => {
-      console.warn('Audio loading failed, switching to simulated playback');
-      // If a track fails, we don't crash, we let it simulate so the visualizer and timers still animate
+      console.warn('Audio playback error occurred');
+      setState((prev) => ({ ...prev, isPlaying: false }));
+      setPlayError('Audio stream error or file not found on Cloudflare Worker');
     };
 
     audio.addEventListener('timeupdate', handleTimeUpdate);
@@ -150,199 +196,73 @@ export function useAudioPlayer() {
     };
   }, []);
 
-  const currentTrack = tracks[state.currentTrackIndex] || tracks[0];
+  const currentTrack: Track | null = tracks.length > 0 ? (tracks[state.currentTrackIndex] || tracks[0]) : null;
 
-  // Fetch local music folder tracks on mount
+  // Sync catalogue with Cloudflare Worker
+  const refreshCatalogue = async (force = true) => {
+    setIsLoadingCatalogue(true);
+    setCatalogueError(null);
+    if (force) {
+      bhoMusicApi.clearCache();
+    }
+    try {
+      const res = await bhoMusicApi.fetchCatalogue(force);
+      setCatalogueDiagnostic({
+        endpoint: res.endpoint || '/api/songs',
+        status: res.status ?? null,
+        songCount: res.rawCount || 0,
+        error: res.error || null,
+        diagnostic: res.diagnostic || null,
+      });
+
+      if (res.error) {
+        setCatalogueError(res.error);
+        setRequiresAccessKey(Boolean(res.requiresKey));
+      } else if (res.tracks.length === 0) {
+        const emptyMsg =
+          res.diagnostic ||
+          'Cloudflare Worker returned 0 songs. Please ensure songs exist in the Musics/BHO directory.';
+        setCatalogueError(emptyMsg);
+        setRequiresAccessKey(false);
+      } else {
+        setCatalogueError(null);
+        setRequiresAccessKey(false);
+        setBhoMeta({
+          repository: res.repository,
+          folder: res.folder,
+          count: res.rawCount,
+        });
+        setTracks((prev) => {
+          const userTracks = prev.filter(
+            (t) => t.source === 'custom' || t.id.startsWith('user-')
+          );
+          const sanitizedTracks = res.tracks.map((t) => ({
+            ...t,
+            artist: (!t.artist || t.artist.toLowerCase().includes('ronit')) ? 'BHOOMIKA' : t.artist,
+          }));
+          const merged = [...sanitizedTracks, ...userTracks];
+          localStorage.setItem('aura_tracks', JSON.stringify(merged));
+          return merged;
+        });
+      }
+    } catch (err: any) {
+      const errMsg = err.message || 'Failed to sync with Cloudflare Worker';
+      setCatalogueError(errMsg);
+      setCatalogueDiagnostic({
+        endpoint: '/api/songs',
+        status: 502,
+        songCount: 0,
+        error: errMsg,
+        diagnostic: String(err),
+      });
+    } finally {
+      setIsLoadingCatalogue(false);
+    }
+  };
+
+  // Initial catalogue fetch on mount
   useEffect(() => {
-    const loadLocalTracks = async () => {
-      const fallbackTracks: Track[] = [
-        {
-          id: "github-0-chahun-main-ya-naa",
-          title: "Chahun Main Ya Naa",
-          artist: "Bhoomika",
-          album: "Aura Sessions",
-          duration: "4:00",
-          durationSec: 240,
-          coverUrl: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?q=80&w=500&auto=format&fit=crop",
-          audioUrl: "https://raw.githubusercontent.com/Ronit-CodeWizard/wizard-resources/main/Musics/BHO/Chahun%20Main%20Ya%20Naa%20-%20BHO.mp3",
-        },
-        {
-          id: "github-1-ishq-mubarak",
-          title: "Ishq Mubarak",
-          artist: "Bhoomika",
-          album: "Aura Sessions",
-          duration: "4:00",
-          durationSec: 240,
-          coverUrl: "https://images.unsplash.com/photo-1498038432885-c6f3f1b912ee?q=80&w=500&auto=format&fit=crop",
-          audioUrl: "https://raw.githubusercontent.com/Ronit-CodeWizard/wizard-resources/main/Musics/BHO/Ishq%20Mubarak%20-%20BHO.mp3",
-        },
-        {
-          id: "github-2-jeena-jeena",
-          title: "Jeena Jeena",
-          artist: "Bhoomika",
-          album: "Aura Sessions",
-          duration: "4:00",
-          durationSec: 240,
-          coverUrl: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?q=80&w=500&auto=format&fit=crop",
-          audioUrl: "https://raw.githubusercontent.com/Ronit-CodeWizard/wizard-resources/main/Musics/BHO/Jeena%20Jeena%20-%20BHO.mp3",
-        },
-        {
-          id: "github-3-nazar-na-lag-jaaye",
-          title: "Nazar Na Lag Jaaye",
-          artist: "Bhoomika",
-          album: "Aura Sessions",
-          duration: "4:00",
-          durationSec: 240,
-          coverUrl: "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?q=80&w=500&auto=format&fit=crop",
-          audioUrl: "https://raw.githubusercontent.com/Ronit-CodeWizard/wizard-resources/main/Musics/BHO/Nazar%20Na%20Lag%20Jaaye%20-%20BHO.mp3",
-        },
-        {
-          id: "github-4-saiyaara",
-          title: "Saiyaara",
-          artist: "Bhoomika",
-          album: "Aura Sessions",
-          duration: "4:00",
-          durationSec: 240,
-          coverUrl: "https://images.unsplash.com/photo-1511379938547-c1f69419868d?q=80&w=500&auto=format&fit=crop",
-          audioUrl: "https://raw.githubusercontent.com/Ronit-CodeWizard/wizard-resources/main/Musics/BHO/Saiyaara%20-%20BHO.mp3",
-        },
-        {
-          id: "github-5-tum-ho-toh",
-          title: "Tum Ho Toh",
-          artist: "Bhoomika",
-          album: "Aura Sessions",
-          duration: "4:00",
-          durationSec: 240,
-          coverUrl: "https://images.unsplash.com/photo-1501386761578-eac5c94b800a?q=80&w=500&auto=format&fit=crop",
-          audioUrl: "https://raw.githubusercontent.com/Ronit-CodeWizard/wizard-resources/main/Musics/BHO/Tum%20Ho%20Toh%20-%20BHO.mp3",
-        },
-      ];
-
-      let fetchedTracks: Track[] = [];
-
-      try {
-        // Step 1: Attempt to fetch from local API endpoint
-        const response = await fetch('/api/tracks');
-        if (response.ok) {
-          const contentType = response.headers.get('content-type');
-          if (contentType && contentType.includes('application/json')) {
-            const localTracks = await response.json() as Track[];
-            if (localTracks && localTracks.length > 0) {
-              fetchedTracks = localTracks;
-            }
-          }
-        }
-      } catch (err) {
-        console.warn('Local tracks endpoint not reachable, fetching directly from GitHub...', err);
-      }
-
-      // Step 2: If local endpoint didn't return tracks, fetch directly from GitHub
-      if (fetchedTracks.length === 0) {
-        try {
-          const ghResponse = await fetch('https://api.github.com/repos/Ronit-CodeWizard/wizard-resources/contents/Musics/BHO');
-          if (ghResponse.ok) {
-            const files = await ghResponse.json() as any[];
-            if (Array.isArray(files) && files.length > 0) {
-              const audioFiles = files.filter(
-                (f) => f.type === 'file' && f.name.toLowerCase().endsWith('.mp3')
-              );
-
-              const coverImages = [
-                "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?q=80&w=500&auto=format&fit=crop",
-                "https://images.unsplash.com/photo-1498038432885-c6f3f1b912ee?q=80&w=500&auto=format&fit=crop",
-                "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?q=80&w=500&auto=format&fit=crop",
-                "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?q=80&w=500&auto=format&fit=crop",
-                "https://images.unsplash.com/photo-1511379938547-c1f69419868d?q=80&w=500&auto=format&fit=crop",
-                "https://images.unsplash.com/photo-1501386761578-eac5c94b800a?q=80&w=500&auto=format&fit=crop"
-              ];
-
-              fetchedTracks = audioFiles.map((file, index) => {
-                let title = file.name.replace(/\.[^/.]+$/, ""); // Strip extension
-                if (title.includes(" - ")) {
-                  title = title.split(" - ")[0];
-                } else if (title.includes("-")) {
-                  title = title.split("-")[0];
-                }
-                title = title.trim();
-
-                return {
-                  id: `github-${index}-${encodeURIComponent(file.name)}`,
-                  title: title || "Untitled Track",
-                  artist: "Bhoomika",
-                  album: "Aura Sessions",
-                  duration: "4:00",
-                  durationSec: 240,
-                  coverUrl: coverImages[index % coverImages.length],
-                  audioUrl: file.download_url || `https://raw.githubusercontent.com/Ronit-CodeWizard/wizard-resources/main/Musics/BHO/${encodeURIComponent(file.name)}`,
-                };
-              });
-            }
-          }
-        } catch (ghErr) {
-          console.warn('Direct GitHub fetch failed, loading static premium fallbacks', ghErr);
-        }
-      }
-
-      // Step 3: Use static tracks if both failed
-      if (fetchedTracks.length === 0) {
-        fetchedTracks = fallbackTracks;
-      }
-
-      // Restore custom duration / info from localStorage
-      const savedStr = localStorage.getItem('aura_tracks');
-      let savedTracks: Track[] = [];
-      if (savedStr) {
-        try {
-          savedTracks = JSON.parse(savedStr);
-        } catch (e) {}
-      }
-
-      const mergedTracks = fetchedTracks.map((track) => {
-        const saved = savedTracks.find((t) => t.id === track.id);
-        if (saved) {
-          return {
-            ...track,
-            duration: saved.duration || track.duration,
-            durationSec: saved.durationSec || track.durationSec,
-          };
-        }
-        return track;
-      });
-
-      setTracks(mergedTracks);
-
-      // Preload metadata to resolve correct audio duration in the background
-      mergedTracks.forEach((track) => {
-        if (track.audioUrl && (!track.durationSec || track.durationSec === 240)) {
-          const tempAudio = new Audio();
-          tempAudio.src = track.audioUrl;
-          tempAudio.preload = 'metadata';
-          tempAudio.addEventListener('loadedmetadata', () => {
-            if (tempAudio.duration && !isNaN(tempAudio.duration)) {
-              const durationSec = tempAudio.duration;
-              const mins = Math.floor(durationSec / 60);
-              const secs = Math.floor(durationSec % 60);
-              const durationStr = `${mins}:${secs < 10 ? '0' : ''}${secs}`;
-
-              setTracks((prevTracks) => {
-                const updated = [...prevTracks];
-                const trackIdx = updated.findIndex((t) => t.id === track.id);
-                if (trackIdx !== -1) {
-                  updated[trackIdx] = {
-                    ...updated[trackIdx],
-                    duration: durationStr,
-                    durationSec: Math.floor(durationSec),
-                  };
-                }
-                return updated;
-              });
-            }
-          });
-        }
-      });
-    };
-
-    loadLocalTracks();
+    refreshCatalogue(false);
   }, []);
 
   // Update audio source when track index changes
@@ -421,7 +341,7 @@ export function useAudioPlayer() {
   };
 
   const playAudio = async (isNewTrack = false) => {
-    if (!audioRef.current) return;
+    if (!audioRef.current || !currentTrack || tracks.length === 0) return;
     setPlayError(null);
     try {
       // Initialize analyser on user gesture
@@ -432,22 +352,21 @@ export function useAudioPlayer() {
       }
 
       stopSimulation();
-      if (isNewTrack || !state.isPlaying) {
-        setTotalPlays((p) => p + 1);
-      }
-      setState((prev) => ({ ...prev, isPlaying: true }));
       await audioRef.current.play();
-    } catch (err: any) {
-      console.warn('Playback block or issue:', err);
-      if (err.name === 'NotAllowedError') {
-        setPlayError('Interaction required to play audio');
-      }
-      // Start simulated playback so the circular vinyl and seekbar still animate!
+
+      // Only record total play count and mark isPlaying: true once play() succeeds!
       if (isNewTrack || !state.isPlaying) {
         setTotalPlays((p) => p + 1);
       }
       setState((prev) => ({ ...prev, isPlaying: true }));
-      startSimulation();
+    } catch (err: any) {
+      console.warn('Playback error or interaction required:', err);
+      setState((prev) => ({ ...prev, isPlaying: false }));
+      if (err.name === 'NotAllowedError') {
+        setPlayError('Interaction required: Click Play to start audio');
+      } else {
+        setPlayError(`Audio playback failed: ${err.message || 'Stream unavailable'}`);
+      }
     }
   };
 
@@ -544,19 +463,24 @@ export function useAudioPlayer() {
 
   const handleTrackEnded = () => {
     if (state.isRepeat === 'one') {
+      // 2nd phase: repeat current song
       if (audioRef.current) {
         audioRef.current.currentTime = 0;
         playAudio();
+      } else {
+        seek(0);
+        playTrack(state.currentTrackIndex, true);
       }
     } else if (state.isRepeat === 'all') {
+      // 1st phase: "next song" always on
       next();
     } else {
-      // none
-      if (state.currentTrackIndex < tracks.length - 1) {
-        next();
-      } else {
-        pauseAudio();
+      // 3rd phase: "off" - play current audio and then turn off
+      pauseAudio();
+      if (audioRef.current) {
+        audioRef.current.currentTime = 0;
       }
+      setState((prev) => ({ ...prev, isPlaying: false, currentTime: 0 }));
     }
   };
   handleTrackEndedRef.current = handleTrackEnded;
@@ -583,9 +507,11 @@ export function useAudioPlayer() {
 
   const toggleRepeat = () => {
     setState((prev) => {
-      let nextRepeat: 'none' | 'all' | 'one' = 'none';
-      if (prev.isRepeat === 'none') nextRepeat = 'all';
-      else if (prev.isRepeat === 'all') nextRepeat = 'one';
+      // 3 phases: 'all' (next song on) -> 'one' (repeat 1) -> 'none' (off)
+      let nextRepeat: 'all' | 'one' | 'none' = 'all';
+      if (prev.isRepeat === 'all') nextRepeat = 'one';
+      else if (prev.isRepeat === 'one') nextRepeat = 'none';
+      else if (prev.isRepeat === 'none') nextRepeat = 'all';
       return { ...prev, isRepeat: nextRepeat };
     });
   };
@@ -593,10 +519,28 @@ export function useAudioPlayer() {
   const toggleLike = (trackId: string) => {
     setState((prev) => {
       const isLiked = prev.likedTrackIds.includes(trackId);
-      const likedTrackIds = isLiked
-        ? prev.likedTrackIds.filter((id) => id !== trackId)
-        : [...prev.likedTrackIds, trackId];
-      return { ...prev, likedTrackIds };
+      if (isLiked) {
+        // Temporarily toggle to false/unfavourite so the UI visually reacts
+        setTimeout(() => {
+          // Automatically revert back to true (favorited)
+          setState((latest) => ({
+            ...latest,
+            likedTrackIds: latest.likedTrackIds.includes(trackId)
+              ? latest.likedTrackIds
+              : [...latest.likedTrackIds, trackId],
+          }));
+        }, 650);
+
+        return {
+          ...prev,
+          likedTrackIds: prev.likedTrackIds.filter((id) => id !== trackId),
+        };
+      } else {
+        return {
+          ...prev,
+          likedTrackIds: [...prev.likedTrackIds, trackId],
+        };
+      }
     });
   };
 
@@ -631,6 +575,39 @@ export function useAudioPlayer() {
     }));
   };
 
+  const addCustomTracks = (newTracks: Track[]) => {
+    setTracks((prev) => {
+      const updated = [...prev, ...newTracks];
+      localStorage.setItem('aura_tracks', JSON.stringify(updated));
+      return updated;
+    });
+    setState((prev) => {
+      const newIds = newTracks.map((t) => t.id);
+      return {
+        ...prev,
+        likedTrackIds: Array.from(new Set([...prev.likedTrackIds, ...newIds])),
+      };
+    });
+  };
+
+  const removeTrack = (trackId: string) => {
+    setTracks((prev) => {
+      const updated = prev.filter((t) => t.id !== trackId);
+      localStorage.setItem('aura_tracks', JSON.stringify(updated));
+      return updated;
+    });
+  };
+
+  const clearAllTracks = () => {
+    setTracks([]);
+    localStorage.setItem('aura_tracks', JSON.stringify([]));
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.src = '';
+    }
+    setState((prev) => ({ ...prev, isPlaying: false, currentTime: 0, currentTrackIndex: 0 }));
+  };
+
   return {
     tracks,
     currentTrack,
@@ -653,6 +630,15 @@ export function useAudioPlayer() {
     reorderPlaylist,
     addToQueue,
     removeFromQueue,
+    addCustomTracks,
+    removeTrack,
+    clearAllTracks,
+    isLoadingCatalogue,
+    catalogueError,
+    requiresAccessKey,
+    bhoMeta,
+    catalogueDiagnostic,
+    refreshCatalogue,
   };
 }
 export type UseAudioPlayerType = ReturnType<typeof useAudioPlayer>;

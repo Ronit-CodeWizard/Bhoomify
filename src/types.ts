@@ -9,9 +9,12 @@ export interface Track {
   audioUrl: string;
   googleDriveFileId?: string;
   blobUrl?: string;
+  filename?: string;
+  size?: number;
+  source?: 'worker' | 'custom' | 'local';
 }
 
-export type TabType = 'home' | 'playlist' | 'now-playing' | 'equalizer' | 'profile';
+export type TabType = 'playlist' | 'now-playing' | 'equalizer' | 'home' | 'profile';
 
 export interface PlayerState {
   isPlaying: boolean;

@@ -1,9 +1,10 @@
 import { motion } from 'motion/react';
 import { Play, Pause, SkipForward, Maximize2 } from 'lucide-react';
 import { Track, PlayerState } from '../types';
+import { MonochromeDiscLabel } from './MonochromeDiscLabel';
 
 interface MiniPlayerProps {
-  currentTrack: Track;
+  currentTrack: Track | null;
   state: PlayerState;
   togglePlay: () => void;
   next: () => void;
@@ -28,12 +29,12 @@ export function MiniPlayer({
       animate={{ y: 0, opacity: 1 }}
       exit={{ y: 80, opacity: 0 }}
       transition={{ type: 'spring', stiffness: 350, damping: 30 }}
-      className="absolute bottom-24 left-1/2 -translate-x-1/2 w-[calc(100%-40px)] max-w-[360px] bg-black/40 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-[0_15px_30px_rgba(0,0,0,0.6)] overflow-hidden z-30 group"
+      className="absolute bottom-6 left-1/2 -translate-x-1/2 w-[calc(100%-32px)] max-w-[420px] bg-white/95 backdrop-blur-2xl border border-black/15 rounded-2xl shadow-[0_15px_40px_rgba(0,0,0,0.15)] overflow-hidden z-30 group text-black"
     >
-      {/* Sleek Progress Bar Indicator on top edge */}
-      <div className="absolute top-0 left-0 right-0 h-0.5 bg-white/5">
+      {/* Inverted Black Progress Indicator */}
+      <div className="absolute top-0 left-0 right-0 h-0.5 bg-black/10">
         <div
-          className="h-full bg-cyan-400 drop-shadow-[0_0_4px_rgba(0,229,255,0.7)] transition-all duration-300"
+          className="h-full bg-black drop-shadow-[0_0_5px_rgba(0,0,0,0.4)] transition-all duration-200"
           style={{ width: `${progressPercentage}%` }}
         />
       </div>
@@ -44,25 +45,23 @@ export function MiniPlayer({
           onClick={onExpand}
           className="flex items-center flex-1 min-w-0 cursor-pointer"
         >
-          {/* Cover Art thumbnail */}
-          <div className="relative w-11 h-11 rounded-lg overflow-hidden flex-shrink-0 shadow-md">
-            <motion.img
+          {/* Rotating Monochromatic Disc thumbnail */}
+          <div className="relative w-10 h-10 rounded-full overflow-hidden flex-shrink-0 shadow-md border border-black/15">
+            <motion.div
               animate={{ rotate: isPlaying ? 360 : 0 }}
               transition={{
                 rotate: { repeat: Infinity, duration: 10, ease: 'linear' },
               }}
-              src={currentTrack?.coverUrl}
-              alt={currentTrack?.title}
-              className="w-full h-full object-cover"
-              referrerPolicy="no-referrer"
-            />
-            <div className="absolute inset-0 rounded-full border border-black/10 pointer-events-none" />
+              className="w-full h-full"
+            >
+              <MonochromeDiscLabel track={currentTrack} size="sm" />
+            </motion.div>
           </div>
 
           {/* Title & Artist info */}
           <div className="ml-3 flex-1 min-w-0 pr-2">
-            <h4 className="text-xs font-bold text-white truncate">{currentTrack?.title}</h4>
-            <p className="text-[10px] text-white/50 truncate mt-0.5">{currentTrack?.artist}</p>
+            <h4 className="text-xs font-bold text-black truncate">{currentTrack?.title}</h4>
+            <p className="text-[10px] text-black/50 truncate mt-0.5">{currentTrack?.artist}</p>
           </div>
         </div>
 
@@ -71,7 +70,8 @@ export function MiniPlayer({
           {/* Play / Pause Toggle */}
           <button
             onClick={togglePlay}
-            className="p-2 text-white hover:text-purple-400 hover:bg-white/5 active:scale-90 transition-all rounded-full cursor-pointer"
+            className="p-2 text-black hover:bg-black/10 active:scale-90 transition-all rounded-full cursor-pointer"
+            title={isPlaying ? 'Pause' : 'Play'}
           >
             {isPlaying ? (
               <Pause className="w-4 h-4 fill-current" />
@@ -83,7 +83,8 @@ export function MiniPlayer({
           {/* Skip Track */}
           <button
             onClick={next}
-            className="p-2 text-white/60 hover:text-white hover:bg-white/5 active:scale-90 transition-all rounded-full cursor-pointer"
+            className="p-2 text-black/70 hover:text-black hover:bg-black/10 active:scale-90 transition-all rounded-full cursor-pointer"
+            title="Next Track"
           >
             <SkipForward className="w-4 h-4 fill-current" />
           </button>
@@ -91,7 +92,8 @@ export function MiniPlayer({
           {/* Maximize Icon */}
           <button
             onClick={onExpand}
-            className="p-2 text-white/40 hover:text-white group-hover:text-white/70 hover:bg-white/5 active:scale-90 transition-all rounded-full cursor-pointer"
+            className="p-2 text-black/40 hover:text-black group-hover:text-black/80 hover:bg-black/10 active:scale-90 transition-all rounded-full cursor-pointer"
+            title="Open Full Player"
           >
             <Maximize2 className="w-3.5 h-3.5" />
           </button>
