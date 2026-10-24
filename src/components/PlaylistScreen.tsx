@@ -213,14 +213,6 @@ export function PlaylistScreen({
                 SYNC
               </button>
             )}
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/5 hover:bg-black/10 border border-black/15 text-black text-[11px] font-mono font-semibold tracking-wider cursor-pointer active:scale-95 transition-all shadow-sm"
-              title="Add audio files from device"
-            >
-              <Upload className="w-3 h-3 text-black" />
-              ADD AUDIO
-            </button>
             {tracks.length > 0 && (
               <button
                 onClick={handlePlayAll}
@@ -235,71 +227,6 @@ export function PlaylistScreen({
               {tracks.length} TRACKS
             </span>
           </div>
-        </div>
-
-        {/* Live Diagnostics Section */}
-        <div className="bg-black/[0.03] border border-black/15 rounded-2xl p-3.5 text-xs font-mono">
-          <div className="flex items-center justify-between pb-2 border-b border-black/10">
-            <div className="flex items-center gap-2">
-              <Terminal className="w-3.5 h-3.5 text-black" />
-              <span className="font-bold text-[11px] uppercase tracking-wider text-black">
-                Catalogue Diagnostics
-              </span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span
-                className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold ${
-                  catalogueDiagnostic?.status === 200
-                    ? 'bg-black/10 text-black border border-black/20'
-                    : 'bg-black text-white'
-                }`}
-              >
-                HTTP {catalogueDiagnostic?.status ?? (isLoadingCatalogue ? '...' : '---')}
-              </span>
-              {onRefreshCatalogue && (
-                <button
-                  onClick={onRefreshCatalogue}
-                  disabled={isLoadingCatalogue}
-                  className="flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-black/5 hover:bg-black/15 border border-black/20 text-black text-[10px] font-bold cursor-pointer active:scale-95 transition-all disabled:opacity-50"
-                  title="Retry catalogue fetch & clear cache"
-                >
-                  <RotateCw className={`w-2.5 h-2.5 ${isLoadingCatalogue ? 'animate-spin' : ''}`} />
-                  {isLoadingCatalogue ? 'Retrying...' : 'Retry'}
-                </button>
-              )}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2 text-[10px]">
-            <div className="bg-white/60 border border-black/10 rounded-xl p-2 flex flex-col">
-              <span className="text-black/50 uppercase font-semibold text-[9px]">Endpoint</span>
-              <span className="font-bold text-black truncate mt-0.5">
-                {catalogueDiagnostic?.endpoint || '/api/songs'}
-              </span>
-            </div>
-            <div className="bg-white/60 border border-black/10 rounded-xl p-2 flex flex-col">
-              <span className="text-black/50 uppercase font-semibold text-[9px]">Songs Returned</span>
-              <span className="font-bold text-black mt-0.5">
-                {catalogueDiagnostic?.songCount ?? (tracks.length > 0 ? tracks.length : 0)}
-              </span>
-            </div>
-          </div>
-
-          {(catalogueDiagnostic?.error || catalogueError) && (
-            <div className="mt-2 text-[10px] bg-white/70 border border-black/15 rounded-xl p-2.5 text-black/80 leading-relaxed">
-              <span className="font-bold text-black uppercase text-[9px] block mb-0.5">
-                Sanitized Error Message
-              </span>
-              <p className="font-sans text-black/70">
-                {catalogueDiagnostic?.error || catalogueError}
-              </p>
-              {requiresAccessKey && (
-                <p className="mt-1 text-[9px] font-mono text-black/60">
-                  Worker API requires <code className="font-bold text-black">BHOOMIFY_KEY</code> server secret to match the Worker&apos;s <code className="font-bold text-black">ACCESS_KEY</code>.
-                </p>
-              )}
-            </div>
-          )}
         </div>
 
         {/* Minimalist Search Box */}

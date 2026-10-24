@@ -382,23 +382,7 @@ export function VinylPlayer({
 
             {/* Inner Monochrome Label (Crisp White Label with Black details) */}
             <div className="w-[120px] sm:w-[130px] h-[120px] sm:h-[130px] rounded-full overflow-hidden flex-shrink-0 relative">
-              {currentTrack ? (
-                <MonochromeDiscLabel track={currentTrack} size="lg" />
-              ) : (
-                <div
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    fileInputRef.current?.click();
-                  }}
-                  className="w-full h-full bg-white flex flex-col items-center justify-center p-2 text-center cursor-pointer group hover:bg-black/5 transition-colors"
-                  title="Click to add audio file"
-                >
-                  <Upload className="w-5 h-5 text-black/60 group-hover:scale-110 transition-transform mb-1" />
-                  <span className="text-[8px] font-mono font-bold tracking-widest text-black/70 uppercase">
-                    ADD SONG
-                  </span>
-                </div>
-              )}
+              <MonochromeDiscLabel track={currentTrack || undefined} size="lg" />
 
               {isDownloadingDriveFile && (
                 <div className="absolute inset-0 bg-white/90 flex flex-col items-center justify-center text-center z-10 rounded-full">

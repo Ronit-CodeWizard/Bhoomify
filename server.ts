@@ -90,15 +90,6 @@ async function startServer() {
       streamUrl: "/api/song?name=" + encodeURIComponent("Chahun Main Ya Naa - BHO.mp3"),
     },
     {
-      name: "Ik Mulaqaat - BHO.mp3",
-      filename: "Ik Mulaqaat - BHO.mp3",
-      title: "Ik Mulaqaat",
-      artist: "BHOOMIKA",
-      author: "BHOOMIKA",
-      size: 164039,
-      streamUrl: "/api/song?name=" + encodeURIComponent("Ik Mulaqaat - BHO.mp3"),
-    },
-    {
       name: "Ishq Mubarak - BHO.mp3",
       filename: "Ishq Mubarak - BHO.mp3",
       title: "Ishq Mubarak",

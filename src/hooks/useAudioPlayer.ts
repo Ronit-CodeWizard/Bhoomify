@@ -37,6 +37,8 @@ export function useAudioPlayer() {
                 !t.id.startsWith('github-') &&
                 !t.id.startsWith('bhoomify-') &&
                 t.album !== 'Aura Sessions' &&
+                !t.id.toLowerCase().replace(/[\s\-_]/g, '').includes('ikmulaqaat') &&
+                !t.title.toLowerCase().replace(/[\s\-_]/g, '').includes('ikmulaqaat') &&
                 (t.album === 'Musics/BHO' || t.source === 'worker' || t.source === 'custom' || t.id.startsWith('user-'))
             )
             .map((t) => ({
@@ -234,12 +236,21 @@ export function useAudioPlayer() {
         });
         setTracks((prev) => {
           const userTracks = prev.filter(
-            (t) => t.source === 'custom' || t.id.startsWith('user-')
+            (t) =>
+              (t.source === 'custom' || t.id.startsWith('user-')) &&
+              !t.id.toLowerCase().replace(/[\s\-_]/g, '').includes('ikmulaqaat') &&
+              !t.title.toLowerCase().replace(/[\s\-_]/g, '').includes('ikmulaqaat')
           );
-          const sanitizedTracks = res.tracks.map((t) => ({
-            ...t,
-            artist: (!t.artist || t.artist.toLowerCase().includes('ronit')) ? 'BHOOMIKA' : t.artist,
-          }));
+          const sanitizedTracks = res.tracks
+            .filter(
+              (t) =>
+                !t.id.toLowerCase().replace(/[\s\-_]/g, '').includes('ikmulaqaat') &&
+                !t.title.toLowerCase().replace(/[\s\-_]/g, '').includes('ikmulaqaat')
+            )
+            .map((t) => ({
+              ...t,
+              artist: (!t.artist || t.artist.toLowerCase().includes('ronit')) ? 'BHOOMIKA' : t.artist,
+            }));
           const merged = [...sanitizedTracks, ...userTracks];
           localStorage.setItem('aura_tracks', JSON.stringify(merged));
           return merged;
