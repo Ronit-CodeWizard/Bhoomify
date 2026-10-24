@@ -78,7 +78,7 @@ async function startServer() {
     }
   });
 
-  // The verified music catalogue from https://github.com/Ronit-CodeWizard/wizard-resources/tree/main/Musics/BHO
+  // Fallback list of GitHub repository files if GitHub web is temporarily unreachable
   const BHO_GITHUB_TRACK_FILES = [
     {
       name: "Chahun Main Ya Naa - BHO.mp3",
@@ -88,6 +88,15 @@ async function startServer() {
       author: "BHOOMIKA",
       size: 563796,
       streamUrl: "/api/song?name=" + encodeURIComponent("Chahun Main Ya Naa - BHO.mp3"),
+    },
+    {
+      name: "Ik Mulaqaat - BHO.mp3",
+      filename: "Ik Mulaqaat - BHO.mp3",
+      title: "Ik Mulaqaat",
+      artist: "BHOOMIKA",
+      author: "BHOOMIKA",
+      size: 164039,
+      streamUrl: "/api/song?name=" + encodeURIComponent("Ik Mulaqaat - BHO.mp3"),
     },
     {
       name: "Ishq Mubarak - BHO.mp3",
@@ -145,6 +154,70 @@ async function startServer() {
     },
   ];
 
+  let githubSongsCache: any[] | null = null;
+  let githubCacheTime = 0;
+  const GITHUB_CACHE_TTL_MS = 60 * 1000;
+
+  const fetchSongsDirectlyFromGithub = async () => {
+    const now = Date.now();
+    if (githubSongsCache && now - githubCacheTime < GITHUB_CACHE_TTL_MS) {
+      return githubSongsCache;
+    }
+
+    try {
+      const url = "https://github.com/Ronit-CodeWizard/wizard-resources/tree/main/Musics/BHO";
+      const res = await fetch(url, {
+        headers: {
+          "User-Agent":
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+          Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        },
+      });
+
+      if (!res.ok) {
+        throw new Error(`GitHub returned HTTP ${res.status}`);
+      }
+
+      const html = await res.text();
+      const regex = /href="\/Ronit-CodeWizard\/wizard-resources\/blob\/main\/Musics\/BHO\/([^"]+\.mp3)"/gi;
+      let match;
+      const files = new Set<string>();
+      while ((match = regex.exec(html)) !== null) {
+        files.add(decodeURIComponent(match[1]));
+      }
+
+      const songs = Array.from(files)
+        .map((filename) => {
+          const cleanTitle = filename
+            .replace(/\s*-\s*bho(?:\.mp3)?$/i, "")
+            .replace(/\.mp3$/i, "")
+            .trim();
+
+          return {
+            name: filename,
+            filename,
+            title: cleanTitle,
+            artist: "BHOOMIKA",
+            author: "BHOOMIKA",
+            streamUrl: `/api/song?name=${encodeURIComponent(filename)}`,
+          };
+        });
+
+      if (songs.length > 0) {
+        githubSongsCache = songs;
+        githubCacheTime = now;
+        return songs;
+      }
+    } catch (err: any) {
+      console.warn("Error dynamically fetching catalogue from GitHub:", err?.message || err);
+      if (githubSongsCache && githubSongsCache.length > 0) {
+        return githubSongsCache;
+      }
+    }
+
+    return BHO_GITHUB_TRACK_FILES;
+  };
+
   const resolveBhoSongFilename = (rawName: string): string => {
     const decoded = decodeURIComponent(rawName).trim();
     // Direct match
@@ -177,46 +250,25 @@ async function startServer() {
 
   // 2. Music catalogue proxy endpoint: GET /api/songs and GET /api/tracks
   const handleGetSongs = async (_req: express.Request, res: express.Response) => {
-    const accessKey = getBhoomifyKey();
-    const workerUrl = getWorkerBaseUrl();
-    const targetUrl = `${workerUrl}/songs`;
+    try {
+      // Exclusively fetch the songs dynamically from GitHub
+      const songs = await fetchSongsDirectlyFromGithub();
 
-    // Attempt to query Cloudflare Worker if access key is present
-    if (accessKey) {
-      try {
-        const headers: Record<string, string> = {
-          Accept: "application/json",
-          "x-access-key": accessKey,
-        };
-
-        const upstreamRes = await fetch(targetUrl, {
-          method: "GET",
-          headers,
-        });
-
-        if (upstreamRes.ok) {
-          const data: any = await upstreamRes.json();
-          // Verify Worker returned songs
-          const hasSongs =
-            (Array.isArray(data) && data.length > 0) ||
-            (data && typeof data === "object" && Array.isArray(data.songs) && data.songs.length > 0);
-
-          if (hasSongs) {
-            return res.json(data);
-          }
-        }
-      } catch (err: any) {
-        console.warn("Cloudflare Worker catalogue request failed, serving Musics/BHO repository catalogue:", err?.message || err);
-      }
+      return res.json({
+        repository: "Ronit-CodeWizard/wizard-resources",
+        folder: "Musics/BHO",
+        source: "github-only",
+        songs,
+      });
+    } catch (err: any) {
+      console.error("Failed to load songs from GitHub:", err);
+      return res.json({
+        repository: "Ronit-CodeWizard/wizard-resources",
+        folder: "Musics/BHO",
+        source: "github-only",
+        songs: BHO_GITHUB_TRACK_FILES,
+      });
     }
-
-    // Serve verified songs from https://github.com/Ronit-CodeWizard/wizard-resources/tree/main/Musics/BHO
-    return res.json({
-      repository: "Ronit-CodeWizard/wizard-resources",
-      folder: "Musics/BHO",
-      source: "github-bho",
-      songs: BHO_GITHUB_TRACK_FILES,
-    });
   };
 
   app.get("/api/songs", handleGetSongs);

@@ -24,35 +24,8 @@ export function useAudioPlayer() {
     diagnostic: null,
   });
 
-  const [tracks, setTracks] = useState<Track[]>(() => {
-    const saved = localStorage.getItem('aura_tracks');
-    if (saved) {
-      try {
-        const parsed: Track[] = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          // Remove all old mock tracks
-          const valid = parsed
-            .filter(
-              (t) =>
-                !t.id.startsWith('github-') &&
-                !t.id.startsWith('bhoomify-') &&
-                t.album !== 'Aura Sessions' &&
-                !t.id.toLowerCase().replace(/[\s\-_]/g, '').includes('ikmulaqaat') &&
-                !t.title.toLowerCase().replace(/[\s\-_]/g, '').includes('ikmulaqaat') &&
-                (t.album === 'Musics/BHO' || t.source === 'worker' || t.source === 'custom' || t.id.startsWith('user-'))
-            )
-            .map((t) => ({
-              ...t,
-              artist: (!t.artist || t.artist.toLowerCase().includes('ronit')) ? 'BHOOMIKA' : t.artist,
-            }));
-          if (valid.length > 0) return valid;
-        }
-      } catch (e) {
-        console.warn('Error parsing cached tracks:', e);
-      }
-    }
-    return initialTracks;
-  });
+  // Songs are dynamically and exclusively fetched from GitHub
+  const [tracks, setTracks] = useState<Track[]>([]);
 
   const [totalPlays, setTotalPlays] = useState<number>(() => {
     const saved = localStorage.getItem('aura_total_plays');
@@ -234,27 +207,13 @@ export function useAudioPlayer() {
           folder: res.folder,
           count: res.rawCount,
         });
-        setTracks((prev) => {
-          const userTracks = prev.filter(
-            (t) =>
-              (t.source === 'custom' || t.id.startsWith('user-')) &&
-              !t.id.toLowerCase().replace(/[\s\-_]/g, '').includes('ikmulaqaat') &&
-              !t.title.toLowerCase().replace(/[\s\-_]/g, '').includes('ikmulaqaat')
-          );
-          const sanitizedTracks = res.tracks
-            .filter(
-              (t) =>
-                !t.id.toLowerCase().replace(/[\s\-_]/g, '').includes('ikmulaqaat') &&
-                !t.title.toLowerCase().replace(/[\s\-_]/g, '').includes('ikmulaqaat')
-            )
-            .map((t) => ({
-              ...t,
-              artist: (!t.artist || t.artist.toLowerCase().includes('ronit')) ? 'BHOOMIKA' : t.artist,
-            }));
-          const merged = [...sanitizedTracks, ...userTracks];
-          localStorage.setItem('aura_tracks', JSON.stringify(merged));
-          return merged;
-        });
+        const gitHubOnlyTracks = res.tracks.map((t) => ({
+          ...t,
+          artist: 'BHOOMIKA',
+        }));
+
+        setTracks(gitHubOnlyTracks);
+        localStorage.setItem('aura_tracks', JSON.stringify(gitHubOnlyTracks));
       }
     } catch (err: any) {
       const errMsg = err.message || 'Failed to sync with Cloudflare Worker';
@@ -271,9 +230,10 @@ export function useAudioPlayer() {
     }
   };
 
-  // Initial catalogue fetch on mount
+  // Initial catalogue fetch on mount: exclusively fetch from GitHub
   useEffect(() => {
-    refreshCatalogue(false);
+    localStorage.removeItem('aura_tracks');
+    refreshCatalogue(true);
   }, []);
 
   // Update audio source when track index changes

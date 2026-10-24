@@ -514,13 +514,10 @@ export const bhoMusicApi = {
         return result;
       }
 
-      // 4. Map valid songs (filtering out Ik Mulaqaat per user request)
-      const validSongItems = normalized.songs.filter((song) => {
-        const details = extractSongDetails(song);
-        if (!details.isAudioFile) return false;
-        const norm = details.cleanTitle.toLowerCase().replace(/[\s\-_]/g, '');
-        return !norm.includes('ikmulaqaat');
-      });
+      // 4. Map valid songs
+      const validSongItems = normalized.songs.filter(
+        (song) => extractSongDetails(song).isAudioFile
+      );
 
       const mappedTracks: Track[] = validSongItems.map((song, index) =>
         mapWorkerSongToTrack(song, index, {
