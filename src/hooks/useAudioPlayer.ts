@@ -24,8 +24,8 @@ export function useAudioPlayer() {
     diagnostic: null,
   });
 
-  // Songs are dynamically and exclusively fetched from GitHub
-  const [tracks, setTracks] = useState<Track[]>([]);
+  // Songs from GitHub Musics/BHO
+  const [tracks, setTracks] = useState<Track[]>(initialTracks);
 
   const [totalPlays, setTotalPlays] = useState<number>(() => {
     const saved = localStorage.getItem('aura_total_plays');

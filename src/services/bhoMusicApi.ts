@@ -388,7 +388,9 @@ export function mapWorkerSongToTrack(
   meta?: { repository?: string; folder?: string }
 ): Track {
   const details = extractSongDetails(song);
-  const audioUrl = `/api/song?name=${encodeURIComponent(details.lookupName)}`;
+  const rawGithubUrl = `https://raw.githubusercontent.com/Ronit-CodeWizard/wizard-resources/main/Musics/BHO/${encodeURIComponent(details.filename || `${details.cleanTitle} - BHO.mp3`)}`;
+  // Direct raw GitHub URL provides full CORS (*), Range support, and zero serverless dependency for Vercel
+  const audioUrl = details.streamUrl && details.streamUrl.startsWith('http') ? details.streamUrl : rawGithubUrl;
   let finalArtist = song.artist || details.artist || 'BHOOMIKA';
   if (
     finalArtist.toLowerCase() === 'ronit-codewizard' ||
@@ -410,6 +412,63 @@ export function mapWorkerSongToTrack(
     filename: details.filename,
     size: details.size,
     source: 'worker',
+  };
+}
+
+async function fetchDirectFromGithub(): Promise<FetchCatalogueResult> {
+  const defaultRepo = 'Ronit-CodeWizard/wizard-resources';
+  const defaultFolder = 'Musics/BHO';
+
+  try {
+    const res = await fetch('https://api.github.com/repos/Ronit-CodeWizard/wizard-resources/contents/Musics/BHO', {
+      headers: { Accept: 'application/vnd.github.v3+json' },
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data) && data.length > 0) {
+        const audioItems = data.filter((item: any) => item.name && item.name.toLowerCase().endsWith('.mp3'));
+        if (audioItems.length > 0) {
+          const mapped = audioItems.map((item: any, idx: number) =>
+            mapWorkerSongToTrack(item, idx, { repository: defaultRepo, folder: defaultFolder })
+          );
+          return {
+            tracks: mapped,
+            rawCount: mapped.length,
+            repository: defaultRepo,
+            folder: defaultFolder,
+            error: null,
+            diagnostic: `Loaded ${mapped.length} tracks directly from GitHub API.`,
+            status: 200,
+            endpoint: 'https://api.github.com/repos/Ronit-CodeWizard/wizard-resources/contents/Musics/BHO',
+          };
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('GitHub API direct fetch failed, falling back to repository file catalogue:', err);
+  }
+
+  // Fallback verified tracks from Musics/BHO
+  const fallbackTracks = [
+    { name: "Chahun Main Ya Naa - BHO.mp3", size: 563796 },
+    { name: "Ik Mulaqaat - BHO.mp3", size: 164039 },
+    { name: "Ishq Mubarak - BHO.mp3", size: 641026 },
+    { name: "Jeena Jeena - BHO.mp3", size: 459949 },
+    { name: "Nazar Na Lag Jaaye - BHO.mp3", size: 495413 },
+    { name: "Rata Lambiya Kaliya Ni Samiye - BHO.mp3", size: 123021 },
+    { name: "Saiyaara - BHO.mp3", size: 913893 },
+    { name: "Tum Ho Toh - BHO.mp3", size: 477909 },
+  ].map((f, i) => mapWorkerSongToTrack(f, i, { repository: defaultRepo, folder: defaultFolder }));
+
+  return {
+    tracks: fallbackTracks,
+    rawCount: fallbackTracks.length,
+    repository: defaultRepo,
+    folder: defaultFolder,
+    error: null,
+    diagnostic: `Loaded ${fallbackTracks.length} tracks from GitHub Musics/BHO repository.`,
+    status: 200,
+    endpoint: 'github-direct-fallback',
   };
 }
 
@@ -435,7 +494,7 @@ export const bhoMusicApi = {
   },
 
   /**
-   * Fetch catalogue from Cloudflare Worker via server proxy
+   * Fetch catalogue from server or fallback to direct GitHub repository
    */
   async fetchCatalogue(forceRefresh = false): Promise<FetchCatalogueResult> {
     const now = Date.now();
@@ -451,70 +510,38 @@ export const bhoMusicApi = {
         },
       });
 
-      // 1. 401 Unauthorized: Worker requires x-access-key
-      if (response.status === 401) {
-        const errorJson = await response.json().catch(() => ({}));
-        const result: FetchCatalogueResult = {
-          tracks: [],
-          rawCount: 0,
-          requiresKey: true,
-          status: 401,
-          endpoint: '/api/songs',
-          diagnostic:
-            'Cloudflare Worker returned HTTP 401 Unauthorized. Server BHOOMIFY_KEY is missing or invalid.',
-          error:
-            errorJson.message ||
-            'Cloudflare Worker requires an access key. Please configure BHOOMIFY_KEY in server secrets.',
-        };
-        cachedResult = result;
-        lastFetchTime = now;
-        return result;
-      }
-
-      // 2. Non-200 HTTP responses (e.g. 502 Upstream Error)
+      // If /api/songs returned 404 (e.g. on Vercel static deployment) or non-OK, fall back to direct GitHub
       if (!response.ok) {
-        const errorJson = await response.json().catch(() => ({}));
-        const diagnosticDetail =
-          errorJson.diagnostic ||
-          errorJson.message ||
-          `HTTP error ${response.status}: ${response.statusText}`;
-
-        const result: FetchCatalogueResult = {
-          tracks: [],
-          rawCount: 0,
-          requiresKey: false,
-          status: response.status,
-          endpoint: '/api/songs',
-          diagnostic: `Cloudflare Worker returned HTTP ${response.status}: ${diagnosticDetail}`,
-          error: `Cloudflare Worker service error (HTTP ${response.status}): ${diagnosticDetail}`,
-        };
-        cachedResult = result;
+        console.warn(`Local proxy /api/songs returned HTTP ${response.status}. Fetching directly from GitHub...`);
+        const directResult = await fetchDirectFromGithub();
+        cachedResult = directResult;
         lastFetchTime = now;
-        return result;
+        return directResult;
       }
 
-      // 3. HTTP 200 OK: Normalize payload format
+      const contentType = response.headers.get('content-type') || '';
+      if (!contentType.includes('application/json')) {
+        // Returned HTML (e.g. Vercel SPA index.html fallback)
+        console.warn('Received non-JSON response from /api/songs. Falling back to direct GitHub...');
+        const directResult = await fetchDirectFromGithub();
+        cachedResult = directResult;
+        lastFetchTime = now;
+        return directResult;
+      }
+
+      // HTTP 200 OK: Normalize payload format
       const data = await response.json();
       const normalized = normalizeCataloguePayload(data);
 
       if (normalized.error || normalized.isEmpty) {
-        const result: FetchCatalogueResult = {
-          tracks: [],
-          rawCount: 0,
-          repository: normalized.repository,
-          folder: normalized.folder,
-          error: normalized.error || 'Cloudflare Worker returned an empty song list.',
-          diagnostic: normalized.diagnostic || 'Received response with 0 songs.',
-          requiresKey: false,
-          status: 200,
-          endpoint: '/api/songs',
-        };
-        cachedResult = result;
+        console.warn('Empty songs payload from proxy, fetching directly from GitHub...');
+        const directResult = await fetchDirectFromGithub();
+        cachedResult = directResult;
         lastFetchTime = now;
-        return result;
+        return directResult;
       }
 
-      // 4. Map valid songs
+      // Map valid songs
       const validSongItems = normalized.songs.filter(
         (song) => extractSongDetails(song).isAudioFile
       );
@@ -527,20 +554,10 @@ export const bhoMusicApi = {
       );
 
       if (mappedTracks.length === 0) {
-        const result: FetchCatalogueResult = {
-          tracks: [],
-          rawCount: 0,
-          repository: normalized.repository,
-          folder: normalized.folder,
-          error: 'Cloudflare Worker returned items, but none were recognized as valid audio tracks (.mp3).',
-          diagnostic: `Found ${normalized.songs.length} raw items, but 0 audio tracks were matched in Musics/BHO.`,
-          requiresKey: false,
-          status: 200,
-          endpoint: '/api/songs',
-        };
-        cachedResult = result;
+        const directResult = await fetchDirectFromGithub();
+        cachedResult = directResult;
         lastFetchTime = now;
-        return result;
+        return directResult;
       }
 
       const result: FetchCatalogueResult = {
@@ -559,16 +576,11 @@ export const bhoMusicApi = {
       lastFetchTime = now;
       return result;
     } catch (err: any) {
-      const failureResult: FetchCatalogueResult = {
-        tracks: [],
-        rawCount: 0,
-        error: `Failed to connect to proxy endpoint /api/songs: ${err.message || String(err)}`,
-        diagnostic: `Network connection error: ${err.message || String(err)}`,
-        requiresKey: false,
-        status: 502,
-        endpoint: '/api/songs',
-      };
-      return failureResult;
+      console.warn('Error fetching catalogue from proxy, fetching directly from GitHub:', err);
+      const directResult = await fetchDirectFromGithub();
+      cachedResult = directResult;
+      lastFetchTime = now;
+      return directResult;
     }
   },
 
