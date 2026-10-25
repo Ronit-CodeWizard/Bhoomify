@@ -29,7 +29,7 @@ export function MiniPlayer({
       animate={{ y: 0, opacity: 1 }}
       exit={{ y: 80, opacity: 0 }}
       transition={{ type: 'spring', stiffness: 350, damping: 30 }}
-      className="absolute bottom-6 left-1/2 -translate-x-1/2 w-[calc(100%-32px)] max-w-[420px] bg-white/95 backdrop-blur-2xl border border-black/15 rounded-2xl shadow-[0_15px_40px_rgba(0,0,0,0.15)] overflow-hidden z-30 group text-black"
+      className="absolute bottom-[66px] sm:bottom-6 left-1/2 -translate-x-1/2 w-[calc(100%-32px)] max-w-[420px] bg-white/95 backdrop-blur-2xl border border-black/15 rounded-2xl shadow-[0_15px_40px_rgba(0,0,0,0.15)] overflow-hidden z-30 group text-black"
     >
       {/* Inverted Black Progress Indicator */}
       <div className="absolute top-0 left-0 right-0 h-0.5 bg-black/10">

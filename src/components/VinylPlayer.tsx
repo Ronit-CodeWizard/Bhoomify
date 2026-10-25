@@ -1,6 +1,19 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Shuffle, SkipBack, Play, Pause, SkipForward, Repeat, Heart, MoreVertical, ChevronDown, ListMusic, Upload } from 'lucide-react';
+import {
+  Shuffle,
+  SkipBack,
+  Play,
+  Pause,
+  SkipForward,
+  Repeat,
+  Heart,
+  MoreVertical,
+  ChevronDown,
+  ListMusic,
+  Volume2,
+  VolumeX,
+} from 'lucide-react';
 import { Track, PlayerState } from '../types';
 import { MonochromeDiscLabel } from './MonochromeDiscLabel';
 import { CloudPopup } from './CloudPopup';
@@ -22,6 +35,10 @@ interface VinylPlayerProps {
   onTogglePlaylist?: () => void;
   isDownloadingDriveFile?: boolean;
   onAddTracks?: (tracks: Track[]) => void;
+  volume?: number;
+  setVolume?: (vol: number) => void;
+  toggleMute?: () => void;
+  isMuted?: boolean;
 }
 
 export function VinylPlayer({
@@ -41,6 +58,10 @@ export function VinylPlayer({
   onTogglePlaylist,
   isDownloadingDriveFile,
   onAddTracks,
+  volume,
+  setVolume,
+  toggleMute,
+  isMuted,
 }: VinylPlayerProps) {
   const { isPlaying, currentTime, duration, isShuffle, isRepeat, likedTrackIds, currentTrackIndex } = state;
 
@@ -174,7 +195,7 @@ export function VinylPlayer({
   return (
     <div
       id="vinyl-player"
-      className="relative flex flex-col items-center justify-between h-full w-full px-6 pt-5 pb-6 text-black select-none overflow-hidden"
+      className="relative flex flex-col items-center justify-between h-full w-full px-4 sm:px-6 pt-3 sm:pt-4 pb-3 sm:pb-5 text-black select-none overflow-y-auto sm:overflow-hidden custom-scrollbar"
     >
       {/* Top Bar Header Buttons Section */}
       <div className="w-full flex items-center justify-between mb-3 shrink-0">
@@ -418,22 +439,43 @@ export function VinylPlayer({
 
       {/* Playback error notice */}
       {playError && (
-        <div className="text-xs bg-black/5 border border-black/20 rounded-2xl px-4 py-2 my-2 text-black/90 text-center w-full max-w-[320px] font-mono leading-tight">
+        <div className="text-xs bg-black/5 border border-black/20 rounded-2xl px-4 py-2 my-1 text-black/90 text-center w-full max-w-[340px] font-mono leading-tight shrink-0">
           {playError}
         </div>
       )}
 
-      {/* Main Playback Controls Section in Inverted Monochromatic Black */}
-      <div className="w-full max-w-[320px] flex items-center justify-between mt-auto pt-4 pb-2">
+      {/* Primary Linear Track Seekbar with Current Time and Total Duration */}
+      <div className="w-full max-w-[340px] px-1 flex flex-col gap-1 mt-auto pt-2 shrink-0 z-30">
+        <div className="relative w-full flex items-center group cursor-pointer py-1">
+          <input
+            type="range"
+            min={0}
+            max={duration > 0 ? duration : 100}
+            step={0.1}
+            value={duration > 0 ? currentTime : 0}
+            onChange={(e) => seek(parseFloat(e.target.value))}
+            className="w-full h-1.5 bg-black/10 rounded-full appearance-none cursor-pointer accent-black focus:outline-none"
+            title={`Seek: ${formatTime(currentTime)} / ${duration > 0 ? formatTime(duration) : '--:--'}`}
+          />
+        </div>
+        <div className="w-full flex items-center justify-between text-[11px] font-mono font-medium text-black/50 select-none px-0.5">
+          <span>{formatTime(currentTime)}</span>
+          <span>{duration > 0 ? formatTime(duration) : '--:--'}</span>
+        </div>
+      </div>
+
+      {/* Main Playback Controls Bar */}
+      <div className="w-full max-w-[340px] flex items-center justify-between pt-2 pb-2 shrink-0 z-30">
         {/* Shuffle Button */}
         <button
           onClick={toggleShuffle}
-          className={`p-2.5 transition-all duration-300 rounded-full cursor-pointer hover:bg-black/10 ${
+          className={`p-2.5 transition-all duration-200 rounded-full cursor-pointer hover:bg-black/5 active:scale-90 ${
             isShuffle 
-              ? 'text-black drop-shadow-[0_0_8px_rgba(0,0,0,0.5)] scale-110' 
-              : 'text-black/40 hover:text-black'
+              ? 'text-black drop-shadow-[0_0_8px_rgba(0,0,0,0.5)] scale-105' 
+              : 'text-black/35 hover:text-black'
           }`}
           title={isShuffle ? 'Shuffle On' : 'Shuffle Off'}
+          aria-label="Toggle Shuffle"
         >
           <Shuffle className="w-5 h-5" />
         </button>
@@ -443,19 +485,19 @@ export function VinylPlayer({
           onClick={prev}
           className="p-3 text-black/80 hover:text-black hover:scale-105 active:scale-95 transition-all rounded-full bg-black/5 hover:bg-black/10 border border-black/10 cursor-pointer"
           title="Previous Track"
+          aria-label="Previous Track"
         >
           <SkipBack className="w-5 h-5 fill-current" />
         </button>
 
-        {/* Play / Pause Toggle Button (Inverted: Solid Black Circle with White Icon) */}
+        {/* Play / Pause Toggle Button */}
         <button
-          onClick={tracks.length === 0 ? () => fileInputRef.current?.click() : togglePlay}
-          className="relative w-15 h-15 rounded-full flex items-center justify-center bg-black text-white hover:scale-105 active:scale-95 transition-all shadow-[0_4px_25px_rgba(0,0,0,0.3)] cursor-pointer"
-          title={tracks.length === 0 ? 'Upload audio' : isPlaying ? 'Pause' : 'Play'}
+          onClick={togglePlay}
+          className="relative w-14 h-14 sm:w-16 sm:h-16 rounded-full flex items-center justify-center bg-black text-white hover:scale-105 active:scale-95 transition-all shadow-[0_4px_25px_rgba(0,0,0,0.35)] cursor-pointer shrink-0"
+          title={isPlaying ? 'Pause' : 'Play'}
+          aria-label={isPlaying ? 'Pause' : 'Play'}
         >
-          {tracks.length === 0 ? (
-            <Upload className="w-5 h-5 text-white" />
-          ) : isPlaying ? (
+          {isPlaying ? (
             <Pause className="w-6 h-6 fill-white stroke-white" />
           ) : (
             <Play className="w-6 h-6 fill-white stroke-white ml-0.5" />
@@ -467,31 +509,32 @@ export function VinylPlayer({
           onClick={next}
           className="p-3 text-black/80 hover:text-black hover:scale-105 active:scale-95 transition-all rounded-full bg-black/5 hover:bg-black/10 border border-black/10 cursor-pointer"
           title="Next Track"
+          aria-label="Next Track"
         >
           <SkipForward className="w-5 h-5 fill-current" />
         </button>
 
-        {/* Repeat Button (3 Phases: 1. Next Song [Always On], 2. Repeat Song [1 on top], 3. Off [Plays current song & turns off]) */}
+        {/* Repeat Button */}
         <button
           onClick={toggleRepeat}
-          className={`relative p-2.5 transition-all duration-300 rounded-full cursor-pointer hover:bg-black/10 active:scale-95 ${
+          className={`relative p-2.5 transition-all duration-200 rounded-full cursor-pointer hover:bg-black/5 active:scale-90 ${
             isRepeat !== 'none'
               ? 'text-black drop-shadow-[0_0_8px_rgba(0,0,0,0.4)] scale-105'
-              : 'text-black/30 hover:text-black/70'
+              : 'text-black/35 hover:text-black'
           }`}
           title={
             isRepeat === 'all'
-              ? 'Next song (Always on)'
+              ? 'Repeat All'
               : isRepeat === 'one'
-              ? 'Repeat song (1)'
-              : 'Off (Plays current audio and turns off)'
+              ? 'Repeat Song (1)'
+              : 'Repeat Off'
           }
           aria-label={
             isRepeat === 'all'
-              ? 'Repeat mode: Next song always on'
+              ? 'Repeat All'
               : isRepeat === 'one'
-              ? 'Repeat mode: Repeat current song'
-              : 'Repeat mode: Off'
+              ? 'Repeat Current Track'
+              : 'Repeat Off'
           }
         >
           <Repeat className="w-5 h-5" />
@@ -503,15 +546,36 @@ export function VinylPlayer({
         </button>
       </div>
 
-      {/* Hidden File Input for uploading custom audio tracks */}
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="audio/*"
-        multiple
-        onChange={handleFileUpload}
-        className="hidden"
-      />
+      {/* Volume Bar Slider Control */}
+      {setVolume && (
+        <div className="w-full max-w-[280px] flex items-center gap-2.5 pt-1 pb-2 shrink-0 z-30">
+          <button
+            onClick={toggleMute}
+            className="text-black/50 hover:text-black transition-colors cursor-pointer p-1"
+            title={isMuted ? 'Unmute' : 'Mute'}
+            aria-label={isMuted ? 'Unmute' : 'Mute'}
+          >
+            {isMuted || (volume ?? 0.8) === 0 ? (
+              <VolumeX className="w-4 h-4 text-black" />
+            ) : (
+              <Volume2 className="w-4 h-4 text-black" />
+            )}
+          </button>
+          <input
+            type="range"
+            min={0}
+            max={1}
+            step={0.01}
+            value={isMuted ? 0 : (volume ?? 0.8)}
+            onChange={(e) => setVolume(parseFloat(e.target.value))}
+            className="flex-1 h-1 bg-black/10 rounded-full appearance-none cursor-pointer accent-black"
+            title={`Master Volume: ${Math.round((isMuted ? 0 : (volume ?? 0.8)) * 100)}%`}
+          />
+          <span className="text-[10px] font-mono text-black/40 min-w-[28px] text-right">
+            {Math.round((isMuted ? 0 : (volume ?? 0.8)) * 100)}%
+          </span>
+        </div>
+      )}
     </div>
   );
 }

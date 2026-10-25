@@ -378,6 +378,10 @@ export default function App() {
               onOpenMenu={() => setDesktopRightTab('profile')}
               onTogglePlaylist={() => setDesktopRightTab(desktopRightTab === 'playlist' ? 'equalizer' : 'playlist')}
               onAddTracks={player.addCustomTracks}
+              volume={volume}
+              setVolume={setVolume}
+              toggleMute={toggleMute}
+              isMuted={isMuted}
             />
           </div>
         </section>
@@ -453,7 +457,7 @@ export default function App() {
       </main>
 
       {/* MOBILE FULL SCREEN VIEW (Navbar-Free, Pure Edge-to-Edge) */}
-      <main className="lg:hidden flex-1 w-full h-full relative overflow-hidden bg-white flex flex-col pt-12">
+      <main className="lg:hidden flex-1 w-full h-full relative overflow-hidden bg-white flex flex-col pt-2">
         {/* Active Tab Screen */}
         <div className="flex-1 w-full h-full relative overflow-hidden">
           <AnimatePresence mode="wait">
@@ -482,6 +486,10 @@ export default function App() {
                   onOpenMenu={() => setActiveTab('profile')}
                   onTogglePlaylist={() => setActiveTab('playlist')}
                   onAddTracks={player.addCustomTracks}
+                  volume={volume}
+                  setVolume={setVolume}
+                  toggleMute={toggleMute}
+                  isMuted={isMuted}
                 />
               </motion.div>
             ) : (
