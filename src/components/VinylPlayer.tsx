@@ -195,13 +195,13 @@ export function VinylPlayer({
   return (
     <div
       id="vinyl-player"
-      className="relative flex flex-col items-center justify-between h-full w-full px-4 sm:px-6 pt-3 sm:pt-4 pb-3 sm:pb-5 text-black select-none overflow-y-auto sm:overflow-hidden custom-scrollbar"
+      className="relative flex flex-col items-center justify-between h-full w-full px-4 sm:px-6 pt-2 sm:pt-4 pb-2 sm:pb-5 text-black select-none overflow-hidden"
     >
       {/* Top Bar Header Buttons Section */}
-      <div className="w-full flex items-center justify-between mb-3 shrink-0">
+      <div className="w-full flex items-center justify-between mb-1 sm:mb-2 shrink-0">
         <motion.button
           onClick={() => setIsLowered((prev) => !prev)}
-          className={`p-2.5 rounded-full transition-all cursor-pointer border ${
+          className={`p-2 rounded-full transition-all cursor-pointer border ${
             isLowered
               ? 'bg-black text-white border-black shadow-md'
               : 'text-black/60 hover:text-black bg-black/5 hover:bg-black/10 border-black/10'
@@ -218,7 +218,7 @@ export function VinylPlayer({
           {onTogglePlaylist && (
             <button
               onClick={onTogglePlaylist}
-              className="text-black/60 hover:text-black p-2.5 bg-black/5 hover:bg-black/10 rounded-full transition-all cursor-pointer border border-black/10"
+              className="text-black/60 hover:text-black p-2 bg-black/5 hover:bg-black/10 rounded-full transition-all cursor-pointer border border-black/10"
               title="Toggle Tracks Playlist"
             >
               <ListMusic className="w-4 h-4" />
@@ -230,7 +230,7 @@ export function VinylPlayer({
               e.preventDefault();
               e.stopPropagation();
             }}
-            className="text-black/25 p-2.5 bg-black/5 rounded-full border border-black/10 cursor-default select-none transition-none"
+            className="text-black/25 p-2 bg-black/5 rounded-full border border-black/10 cursor-default select-none transition-none"
             aria-label="Options"
           >
             <MoreVertical className="w-4 h-4" />
@@ -242,13 +242,13 @@ export function VinylPlayer({
       <AnimatePresence>
         {isLowered && (
           <motion.div
-            initial={{ opacity: 0, y: -8, height: 0 }}
+            initial={{ opacity: 0, y: -6, height: 0 }}
             animate={{ opacity: 1, y: 0, height: 'auto' }}
-            exit={{ opacity: 0, y: -8, height: 0 }}
+            exit={{ opacity: 0, y: -6, height: 0 }}
             transition={{ type: 'spring', stiffness: 380, damping: 28 }}
-            className="w-full flex items-center justify-center overflow-hidden mb-4 shrink-0 z-40"
+            className="w-full flex items-center justify-center overflow-hidden mb-2 shrink-0 z-40"
           >
-            <span className="text-xs sm:text-[13px] font-mono font-bold tracking-[0.22em] text-black uppercase select-all py-1">
+            <span className="text-xs sm:text-[13px] font-mono font-bold tracking-[0.22em] text-black uppercase select-all py-0.5">
               MADE BY RONIT MAJHI
             </span>
           </motion.div>
@@ -256,15 +256,15 @@ export function VinylPlayer({
       </AnimatePresence>
 
       {/* Song Details Header */}
-      <div className="w-full flex items-start justify-between mb-4 px-1 relative z-30">
+      <div className="w-full flex items-start justify-between mb-1 sm:mb-2 px-1 relative z-30 shrink-0">
         <div className="flex flex-col min-w-0 pr-3">
           <AnimatePresence mode="wait">
             <motion.h1
               key={currentTrack?.title}
-              initial={{ opacity: 0, y: -6 }}
+              initial={{ opacity: 0, y: -4 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 6 }}
-              className="text-2xl sm:text-3xl font-bold tracking-tight text-black font-display truncate"
+              exit={{ opacity: 0, y: 4 }}
+              className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight text-black font-display truncate"
             >
               {currentTrack?.title || 'No Track Selected'}
             </motion.h1>
@@ -272,12 +272,12 @@ export function VinylPlayer({
           <AnimatePresence mode="wait">
             <motion.p
               key={currentTrack?.artist}
-              initial={{ opacity: 0, y: -4 }}
+              initial={{ opacity: 0, y: -2 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 4 }}
-              className="text-sm sm:text-base text-black/55 font-medium mt-1 truncate"
+              exit={{ opacity: 0, y: 2 }}
+              className="text-xs sm:text-sm text-black/55 font-medium mt-0.5 truncate"
             >
-              {currentTrack?.artist || 'Upload or add audio files to play'}
+              {currentTrack?.artist || 'BHOOMIKA'}
             </motion.p>
           </AnimatePresence>
         </div>
@@ -293,11 +293,11 @@ export function VinylPlayer({
                 : { scale: [0.85, 1.35, 1], rotate: 0 }
             }
             transition={{ duration: 0.35, ease: 'easeOut' }}
-            className="p-2.5 rounded-full bg-black/5 hover:bg-black/10 border border-black/10 cursor-pointer shrink-0 transition-colors"
+            className="p-2 sm:p-2.5 rounded-full bg-black/5 hover:bg-black/10 border border-black/10 cursor-pointer shrink-0 transition-colors"
             title={effectiveIsLiked ? 'Favorited' : 'Unfavorited'}
           >
             <Heart
-              className={`w-5 h-5 transition-all duration-300 ${
+              className={`w-4 h-4 sm:w-5 sm:h-5 transition-all duration-300 ${
                 effectiveIsLiked 
                   ? 'fill-black text-black drop-shadow-[0_0_8px_rgba(0,0,0,0.35)]' 
                   : 'fill-transparent text-black/25'
@@ -308,7 +308,7 @@ export function VinylPlayer({
           {/* Cloud Container Pop-up */}
           <AnimatePresence>
             {showCloud && (
-              <div className="absolute right-0 top-12 z-50">
+              <div className="absolute right-0 top-10 z-50">
                 <CloudPopup
                   tailDirection="up"
                   onClose={() => setShowCloud(false)}
@@ -320,20 +320,20 @@ export function VinylPlayer({
       </div>
 
       {/* Vinyl Disc & Circular Seek Container with Peeking Discs */}
-      <div className="relative w-full flex items-center justify-center my-auto py-4 overflow-visible">
-        {/* Left Peeking Monochromatic Disc */}
+      <div className="relative w-full flex items-center justify-center my-auto py-1 sm:py-2 overflow-visible shrink min-h-0">
+        {/* Left Peeking Monochromatic Disc (desktop only to prevent side overflow on mobile) */}
         {tracks.length > 1 && prevTrack && (
           <div 
             onClick={prev}
-            className="absolute -left-[110px] sm:-left-[130px] w-[150px] sm:w-[170px] h-[150px] sm:h-[170px] rounded-full overflow-hidden border border-black/10 opacity-30 hover:opacity-60 transition-all duration-300 transform scale-90 cursor-pointer flex-shrink-0 select-none z-10 shadow-lg"
+            className="hidden sm:block absolute -left-[110px] sm:-left-[130px] w-[140px] sm:w-[170px] h-[140px] sm:h-[170px] rounded-full overflow-hidden border border-black/10 opacity-30 hover:opacity-60 transition-all duration-300 transform scale-90 cursor-pointer flex-shrink-0 select-none z-10 shadow-lg"
             title={`Previous: ${prevTrack?.title}`}
           >
             <MonochromeDiscLabel track={prevTrack} size="md" showDetails={false} />
           </div>
         )}
 
-        {/* Center Vinyl + Acrylic Progress Ring */}
-        <div className="relative w-[240px] sm:w-[260px] h-[240px] sm:h-[260px] flex items-center justify-center z-20">
+        {/* Center Vinyl + Acrylic Progress Ring (Responsive size: 170px on mobile, 240px on tablet/desktop) */}
+        <div className="relative w-[170px] xs:w-[190px] sm:w-[230px] md:w-[250px] h-[170px] xs:h-[190px] sm:h-[230px] md:h-[250px] flex items-center justify-center z-20 shrink-0">
           {/* Glass Inner Rim Shadow */}
           <div className="absolute inset-0 rounded-full border border-black/10 bg-black/[0.02] shadow-[inset_0_4px_25px_rgba(0,0,0,0.03),0_20px_45px_rgba(0,0,0,0.08)]" />
 
@@ -391,8 +391,8 @@ export function VinylPlayer({
                 ease: 'linear',
               },
             }}
-            className="relative w-[190px] sm:w-[200px] h-[190px] sm:h-[200px] rounded-full bg-[#111111] border border-black/80 flex items-center justify-center shadow-[inset_0_0_20px_rgba(255,255,255,0.05),0_15px_35px_rgba(0,0,0,0.25)] cursor-pointer"
-            onClick={tracks.length === 0 ? () => fileInputRef.current?.click() : togglePlay}
+            className="relative w-[130px] xs:w-[150px] sm:w-[180px] md:w-[195px] h-[130px] xs:h-[150px] sm:h-[180px] md:h-[195px] rounded-full bg-[#111111] border border-black/80 flex items-center justify-center shadow-[inset_0_0_20px_rgba(255,255,255,0.05),0_15px_35px_rgba(0,0,0,0.25)] cursor-pointer"
+            onClick={togglePlay}
           >
             {/* Vinyl Grooves Texture */}
             <div className="absolute inset-2 rounded-full border border-white/[0.08] pointer-events-none" />
@@ -401,35 +401,35 @@ export function VinylPlayer({
             <div className="absolute inset-8 rounded-full border border-white/[0.06] pointer-events-none" />
             <div className="absolute inset-10 rounded-full border border-white/[0.06] pointer-events-none" />
 
-            {/* Inner Monochrome Label (Crisp White Label with Black details) */}
-            <div className="w-[120px] sm:w-[130px] h-[120px] sm:h-[130px] rounded-full overflow-hidden flex-shrink-0 relative">
+            {/* Inner Monochrome Label */}
+            <div className="w-[82px] xs:w-[95px] sm:w-[115px] md:w-[125px] h-[82px] xs:h-[95px] sm:h-[115px] md:h-[125px] rounded-full overflow-hidden flex-shrink-0 relative">
               <MonochromeDiscLabel track={currentTrack || undefined} size="lg" />
 
               {isDownloadingDriveFile && (
                 <div className="absolute inset-0 bg-white/90 flex flex-col items-center justify-center text-center z-10 rounded-full">
-                  <div className="w-5 h-5 rounded-full border-2 border-black/30 border-t-black animate-spin mb-1 drop-shadow-[0_0_8px_rgba(0,0,0,0.3)]" />
-                  <span className="text-[7.5px] font-mono text-black tracking-widest uppercase font-bold animate-pulse">STREAMING</span>
+                  <div className="w-4 h-4 rounded-full border-2 border-black/30 border-t-black animate-spin mb-1 drop-shadow-[0_0_8px_rgba(0,0,0,0.3)]" />
+                  <span className="text-[7px] font-mono text-black tracking-widest uppercase font-bold animate-pulse">STREAMING</span>
                 </div>
               )}
             </div>
 
             {/* Central Spindle Hole with black accent */}
-            <div className="absolute w-4 h-4 rounded-full bg-white border-2 border-black/50 shadow-inner flex items-center justify-center z-20 pointer-events-none">
-              <div className="w-1.5 h-1.5 rounded-full bg-black" />
+            <div className="absolute w-3 h-3 sm:w-3.5 sm:h-3.5 rounded-full bg-white border-2 border-black/50 shadow-inner flex items-center justify-center z-20 pointer-events-none">
+              <div className="w-1 h-1 rounded-full bg-black" />
             </div>
           </motion.div>
 
           {/* Time Display centered underneath the disc, inside the outer ring */}
-          <div className="absolute bottom-3 text-xs font-mono font-bold tracking-widest text-black/70 select-none">
+          <div className="absolute bottom-2 sm:bottom-3 text-[10px] sm:text-xs font-mono font-bold tracking-widest text-black/70 select-none">
             {formatTime(currentTime)}
           </div>
         </div>
 
-        {/* Right Peeking Monochromatic Disc */}
+        {/* Right Peeking Monochromatic Disc (desktop only to prevent side overflow on mobile) */}
         {tracks.length > 1 && nextTrack && (
           <div 
             onClick={next}
-            className="absolute -right-[110px] sm:-right-[130px] w-[150px] sm:w-[170px] h-[150px] sm:h-[170px] rounded-full overflow-hidden border border-black/10 opacity-30 hover:opacity-60 transition-all duration-300 transform scale-90 cursor-pointer flex-shrink-0 select-none z-10 shadow-lg"
+            className="hidden sm:block absolute -right-[110px] sm:-right-[130px] w-[140px] sm:w-[170px] h-[140px] sm:h-[170px] rounded-full overflow-hidden border border-black/10 opacity-30 hover:opacity-60 transition-all duration-300 transform scale-90 cursor-pointer flex-shrink-0 select-none z-10 shadow-lg"
             title={`Next: ${nextTrack?.title}`}
           >
             <MonochromeDiscLabel track={nextTrack} size="md" showDetails={false} />
@@ -439,13 +439,13 @@ export function VinylPlayer({
 
       {/* Playback error notice */}
       {playError && (
-        <div className="text-xs bg-black/5 border border-black/20 rounded-2xl px-4 py-2 my-1 text-black/90 text-center w-full max-w-[340px] font-mono leading-tight shrink-0">
+        <div className="text-xs bg-black/5 border border-black/20 rounded-2xl px-4 py-1.5 my-1 text-black/90 text-center w-full max-w-[340px] font-mono leading-tight shrink-0">
           {playError}
         </div>
       )}
 
       {/* Primary Linear Track Seekbar with Current Time and Total Duration */}
-      <div className="w-full max-w-[340px] px-1 flex flex-col gap-1 mt-auto pt-2 shrink-0 z-30">
+      <div className="w-full max-w-[340px] px-1 flex flex-col gap-1 shrink-0 z-30 pt-1">
         <div className="relative w-full flex items-center group cursor-pointer py-1">
           <input
             type="range"
@@ -465,11 +465,11 @@ export function VinylPlayer({
       </div>
 
       {/* Main Playback Controls Bar */}
-      <div className="w-full max-w-[340px] flex items-center justify-between pt-2 pb-2 shrink-0 z-30">
+      <div className="w-full max-w-[340px] flex items-center justify-between pt-1 sm:pt-2 pb-1 sm:pb-2 shrink-0 z-30">
         {/* Shuffle Button */}
         <button
           onClick={toggleShuffle}
-          className={`p-2.5 transition-all duration-200 rounded-full cursor-pointer hover:bg-black/5 active:scale-90 ${
+          className={`p-2 transition-all duration-200 rounded-full cursor-pointer hover:bg-black/5 active:scale-90 ${
             isShuffle 
               ? 'text-black drop-shadow-[0_0_8px_rgba(0,0,0,0.5)] scale-105' 
               : 'text-black/35 hover:text-black'
@@ -477,47 +477,47 @@ export function VinylPlayer({
           title={isShuffle ? 'Shuffle On' : 'Shuffle Off'}
           aria-label="Toggle Shuffle"
         >
-          <Shuffle className="w-5 h-5" />
+          <Shuffle className="w-4 h-4 sm:w-5 sm:h-5" />
         </button>
 
         {/* Previous Track Button */}
         <button
           onClick={prev}
-          className="p-3 text-black/80 hover:text-black hover:scale-105 active:scale-95 transition-all rounded-full bg-black/5 hover:bg-black/10 border border-black/10 cursor-pointer"
+          className="p-2.5 sm:p-3 text-black/80 hover:text-black hover:scale-105 active:scale-95 transition-all rounded-full bg-black/5 hover:bg-black/10 border border-black/10 cursor-pointer"
           title="Previous Track"
           aria-label="Previous Track"
         >
-          <SkipBack className="w-5 h-5 fill-current" />
+          <SkipBack className="w-4 h-4 sm:w-5 sm:h-5 fill-current" />
         </button>
 
         {/* Play / Pause Toggle Button */}
         <button
           onClick={togglePlay}
-          className="relative w-14 h-14 sm:w-16 sm:h-16 rounded-full flex items-center justify-center bg-black text-white hover:scale-105 active:scale-95 transition-all shadow-[0_4px_25px_rgba(0,0,0,0.35)] cursor-pointer shrink-0"
+          className="relative w-13 h-13 sm:w-16 sm:h-16 rounded-full flex items-center justify-center bg-black text-white hover:scale-105 active:scale-95 transition-all shadow-[0_4px_25px_rgba(0,0,0,0.35)] cursor-pointer shrink-0"
           title={isPlaying ? 'Pause' : 'Play'}
           aria-label={isPlaying ? 'Pause' : 'Play'}
         >
           {isPlaying ? (
-            <Pause className="w-6 h-6 fill-white stroke-white" />
+            <Pause className="w-5 h-5 sm:w-6 sm:h-6 fill-white stroke-white" />
           ) : (
-            <Play className="w-6 h-6 fill-white stroke-white ml-0.5" />
+            <Play className="w-5 h-5 sm:w-6 sm:h-6 fill-white stroke-white ml-0.5" />
           )}
         </button>
 
         {/* Next Track Button */}
         <button
           onClick={next}
-          className="p-3 text-black/80 hover:text-black hover:scale-105 active:scale-95 transition-all rounded-full bg-black/5 hover:bg-black/10 border border-black/10 cursor-pointer"
+          className="p-2.5 sm:p-3 text-black/80 hover:text-black hover:scale-105 active:scale-95 transition-all rounded-full bg-black/5 hover:bg-black/10 border border-black/10 cursor-pointer"
           title="Next Track"
           aria-label="Next Track"
         >
-          <SkipForward className="w-5 h-5 fill-current" />
+          <SkipForward className="w-4 h-4 sm:w-5 sm:h-5 fill-current" />
         </button>
 
         {/* Repeat Button */}
         <button
           onClick={toggleRepeat}
-          className={`relative p-2.5 transition-all duration-200 rounded-full cursor-pointer hover:bg-black/5 active:scale-90 ${
+          className={`relative p-2 transition-all duration-200 rounded-full cursor-pointer hover:bg-black/5 active:scale-90 ${
             isRepeat !== 'none'
               ? 'text-black drop-shadow-[0_0_8px_rgba(0,0,0,0.4)] scale-105'
               : 'text-black/35 hover:text-black'
@@ -537,7 +537,7 @@ export function VinylPlayer({
               : 'Repeat Off'
           }
         >
-          <Repeat className="w-5 h-5" />
+          <Repeat className="w-4 h-4 sm:w-5 sm:h-5" />
           {isRepeat === 'one' && (
             <span className="absolute -top-0.5 -right-0.5 bg-black text-white font-mono font-bold text-[8.5px] rounded-full w-3.5 h-3.5 flex items-center justify-center border border-white shadow-sm pointer-events-none select-none">
               1
@@ -548,7 +548,7 @@ export function VinylPlayer({
 
       {/* Volume Bar Slider Control */}
       {setVolume && (
-        <div className="w-full max-w-[280px] flex items-center gap-2.5 pt-1 pb-2 shrink-0 z-30">
+        <div className="w-full max-w-[260px] flex items-center gap-2 pt-0 pb-1 sm:pb-2 shrink-0 z-30">
           <button
             onClick={toggleMute}
             className="text-black/50 hover:text-black transition-colors cursor-pointer p-1"
@@ -556,9 +556,9 @@ export function VinylPlayer({
             aria-label={isMuted ? 'Unmute' : 'Mute'}
           >
             {isMuted || (volume ?? 0.8) === 0 ? (
-              <VolumeX className="w-4 h-4 text-black" />
+              <VolumeX className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-black" />
             ) : (
-              <Volume2 className="w-4 h-4 text-black" />
+              <Volume2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-black" />
             )}
           </button>
           <input

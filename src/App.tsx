@@ -326,7 +326,7 @@ export default function App() {
   }
 
   return (
-    <div className="w-full h-screen min-h-screen bg-white text-black flex flex-col overflow-hidden relative select-none font-sans selection:bg-black selection:text-white">
+    <div className="w-full h-[100dvh] max-h-[100dvh] bg-white text-black flex flex-col overflow-hidden relative select-none font-sans selection:bg-black selection:text-white">
       {/* Background subtle radial lighting */}
       <div className="absolute inset-0 bg-radial from-black/[0.015] via-transparent to-transparent pointer-events-none" />
 
@@ -457,7 +457,7 @@ export default function App() {
       </main>
 
       {/* MOBILE FULL SCREEN VIEW (Navbar-Free, Pure Edge-to-Edge) */}
-      <main className="lg:hidden flex-1 w-full h-full relative overflow-hidden bg-white flex flex-col pt-2">
+      <main className="lg:hidden flex-1 w-full h-full relative overflow-hidden bg-white flex flex-col p-0">
         {/* Active Tab Screen */}
         <div className="flex-1 w-full h-full relative overflow-hidden">
           <AnimatePresence mode="wait">
